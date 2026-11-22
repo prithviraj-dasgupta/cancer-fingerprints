@@ -1,0 +1,5 @@
+project	n_tumours_input	n_signatures	n_excluded_lt20	n_excluded_lt50	n_excluded_lt100	n_fitted_main	mean_cosine	median_cosine	frac_cosine_lt_0.8	n_cosine_lt_0.8
+TCGA-LUAD_noSBS18	557	5	16	84	157	473	0.8923	0.9147	0.1099	52
+TCGA-LUSC_noSBS18	485	5	5	10	35	475	0.8877	0.8962	0.05895	28
+TCGA-COAD_noSBS18	428	12	12	25	144	403	0.9449	0.9549	0.01489	6
+TCGA-READ_noSBS18	155	12	12	20	83	135	0.9294	0.9378	0.02222	3

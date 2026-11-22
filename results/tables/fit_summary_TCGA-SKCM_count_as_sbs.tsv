@@ -1,0 +1,12 @@
+statistic	value
+project	TCGA-SKCM_count_as_sbs
+method	NNLS signature refitting (scipy.optimize.nnls) against COSMIC v3.4
+n_signatures_fitted	7
+n_tumours_input	467
+min_snvs	50
+n_tumours_fitted	418
+n_excluded_main	49
+n_excluded_min_snvs_20	13
+n_excluded_min_snvs_50	49
+n_excluded_min_snvs_100	82
+mean_reconstruction_cosine	0.9741902488628296

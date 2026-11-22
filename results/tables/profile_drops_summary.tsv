@@ -1,0 +1,6 @@
+project	n_tumours	total_rows	snp_rows	kept_snvs	median_snvs	q1_snvs	q3_snvs	n_zero_snv_tumours	pct_kept_of_snp_rows	not_snp	non_acgt	no_alt	tri_allelic	non_plus_strand	missing_context	context_mismatch	missing_position	duplicate	multiallelic_position	adjacent_snv_dbs	pct_not_snp_of_all_rows	pct_non_acgt	pct_no_alt	pct_tri_allelic	pct_non_plus_strand	pct_missing_context	pct_context_mismatch	pct_missing_position	pct_duplicate	pct_multiallelic_position	pct_adjacent_snv_dbs	dbs_events	mnv_events
+TCGA-LUAD	557	177424	171546	166240	201	84	393	0	96.91	5878	0	0	0	0	0	0	0	0	0	5306	3.313	0	0	0	0	0	0	0	0	0	3.093	2635	12
+TCGA-LUSC	485	155015	149940	145309	238	177	356	0	96.91	5075	0	0	0	0	0	0	0	0	0	4631	3.274	0	0	0	0	0	0	0	0	0	3.089	2299	11
+TCGA-SKCM	467	353368	351167	331838	375	172	783	0	94.5	2201	0	0	0	0	0	0	0	0	0	19329	0.6229	0	0	0	0	0	0	0	0	0	5.504	9627	25
+TCGA-COAD	428	210669	187692	187249	121.5	89	179.5	0	99.76	22977	0	0	0	0	0	0	0	0	0	443	10.91	0	0	0	0	0	0	0	0	0	0.236	208	9
+TCGA-READ	155	53200	51593	51410	96	75	129	0	99.65	1607	0	0	0	0	0	0	0	0	0	183	3.021	0	0	0	0	0	0	0	0	0	0.3547	84	5

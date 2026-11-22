@@ -1,0 +1,12 @@
+statistic	value
+project	TCGA-COAD_noSBS18
+method	NNLS signature refitting (scipy.optimize.nnls) against COSMIC v3.4
+n_signatures_fitted	12
+n_tumours_input	428
+min_snvs	50
+n_tumours_fitted	403
+n_excluded_main	25
+n_excluded_min_snvs_20	12
+n_excluded_min_snvs_50	25
+n_excluded_min_snvs_100	144
+mean_reconstruction_cosine	0.9449145390196455
