@@ -38,6 +38,48 @@ provided:
   16 by substitution (C>A, C>G, C>T, T>A, T>C, T>G), each block 5' base then
   3' base. Use it only for plotting (``matrix.loc[SBS96_PLOT_ORDER]``).
 
+Adjacent SNVs (doublets)
+------------------------
+Two SNV rows in the same sample, on the same chromosome, at consecutive
+positions (``pos`` and ``pos + 1``) look like one doublet base substitution
+(DBS) that was reported as two SNVs. Longer runs (3+ consecutive positions) look
+like multi-nucleotide variants (MNVs). The ``adjacent_snvs`` option controls
+what happens to them (project decision D5 in ``docs/decisions.md``):
+
+- ``"exclude"`` (default): every row in such a run is left out of the SBS96
+  counts (drop reason ``adjacent_snv_dbs``), so the SBS and DBS catalogues stay
+  mutually exclusive. This is a conservative project choice. Whether it matches the
+  convention used to extract the COSMIC reference signatures (PCAWG) is **not
+  yet verified**.
+- ``"count_as_sbs"``: the rows are counted as ordinary SBS, as
+  SigProfilerMatrixGenerator 1.6.0 does. Its ``catalogue_generator_single``
+  counts same-sample SNVs at ``pos``/``pos+1`` as a DBS, but its SBS loop still
+  counts every SNV, so they end up in both catalogues. (SigProfiler only
+  writes runs of 3+ within 5 bp to an "MNS" seqInfo file; they get no special
+  SBS treatment.) This matches SigProfiler's handling of adjacent SNVs only.
+  Overall SBS96 counts can still differ from SigProfilerMatrixGenerator's,
+  because this module also applies its own drops (e.g. ``tri_allelic``,
+  ``non_plus_strand``), takes the context from ``CONTEXT``, not a genome
+  FASTA, and de-duplicates differently.
+
+In both modes the runs are detected and reported in the same way:
+``adjacent_run_id`` / ``adjacent_run_len`` per row, and per-sample
+``dbs_events`` (runs of exactly 2) and ``mnv_events`` (runs of 3+) in the drop
+summary. So the event counts are identical whichever mode is used.
+
+Only rows that passed every other check, *after* de-duplication, are
+considered. So an exact duplicate (same position) can never look like a
+neighbour, and a row dropped for another reason (e.g. ``context_mismatch``)
+does not turn its valid neighbour into a doublet. Runs are found over distinct
+positions: if one position carries two different kept alts (a multi-allelic
+site) and is next to another kept SNV, every row at those positions belongs
+to the run, and the run length counts positions, not rows. An *isolated*
+multi-allelic site (no neighbour) keeps both alts as SBS. How such sites should
+be treated is a known open question for biology review. GDC already reports
+caller-merged doublets as ``Variant_Type == "DNP"`` rows, which are dropped as
+``not_snp`` and not counted as events. This rule only concerns pairs reported
+as two separate SNP rows.
+
 Future hook (not built in v1)
 -----------------------------
 VCF input, or MAFs without ``CONTEXT``, will need the trinucleotide looked up
@@ -53,6 +95,7 @@ from __future__ import annotations
 import gzip
 import logging
 from pathlib import Path
+from typing import Literal, get_args
 
 import numpy as np
 import pandas as pd
@@ -64,6 +107,8 @@ __all__ = [
     "SBS96_PLOT_ORDER",
     "SUBSTITUTIONS",
     "DROP_REASONS",
+    "EVENT_COLUMNS",
+    "ADJACENT_SNV_MODES",
     "read_maf",
     "annotate_sbs96",
     "build_sbs96_matrix",
@@ -101,12 +146,27 @@ DROP_REASONS: list[str] = [
     "not_snp",  # Variant_Type is not SNP (DNP/TNP/ONP/INS/DEL) or alleles not 1 bp
     "non_acgt",  # ref or alt allele is not one of A/C/G/T
     "no_alt",  # neither tumour allele differs from the reference
+    "tri_allelic",  # Allele1 != ref, Allele2 != ref, Allele1 != Allele2
     "non_plus_strand",  # a Strand column exists and this row is not "+"
     "missing_context",  # CONTEXT absent, too short, even length, or non-ACGT trinucleotide
     "context_mismatch",  # centre base of CONTEXT != Reference_Allele
     "missing_position",  # Start_Position missing/non-numeric (cannot dedupe safely)
     "duplicate",  # same sample / chrom / position / ref / alt seen earlier
+    "adjacent_snv_dbs",  # in a run of >= 2 adjacent same-sample SNVs (adjacent_snvs="exclude")
 ]
+
+#: Allowed values of the ``adjacent_snvs`` option (see module docstring).
+AdjacentSNVMode = Literal["exclude", "count_as_sbs"]
+ADJACENT_SNV_MODES: tuple[str, ...] = get_args(AdjacentSNVMode)
+
+
+def _check_adjacent_mode(mode: str) -> None:
+    if mode not in ADJACENT_SNV_MODES:
+        raise ValueError(f"adjacent_snvs must be one of {list(ADJACENT_SNV_MODES)}, got {mode!r}")
+
+
+#: Extra per-sample event counts in :func:`drop_summary` (not row counts).
+EVENT_COLUMNS: list[str] = ["dbs_events", "mnv_events"]
 
 _COMPLEMENT = str.maketrans("ACGT", "TGCA")
 _REQUIRED_COLS = [
@@ -182,10 +242,15 @@ def _pick_alt(ref: pd.Series, a1: pd.Series, a2: pd.Series) -> pd.Series:
     GDC MAFs put the variant allele in ``Tumor_Seq_Allele2``;
     ``Tumor_Seq_Allele1`` is usually equal to the reference (heterozygous call).
     So: use Allele2 if it differs from the reference, otherwise fall back to
-    Allele1 if *that* differs, otherwise there is no alt (empty string).
-    If both differ from the reference (and from each other) Allele2 is used,
-    consistent with GDC's convention that Allele2 is the reported variant.
-    Inputs must already be cleaned (upper-case, stripped, NaN -> "").
+    Allele1 if *that* differs, otherwise there is no alt (empty string,
+    dropped as ``no_alt``). Allele1 == Allele2 != ref (homozygous / LOH call)
+    gives that allele and is kept.
+
+    Tri-allelic rows, where Allele1 != ref, Allele2 != ref **and**
+    Allele1 != Allele2, still get Allele2 here. But
+    :func:`annotate_sbs96` drops them as ``tri_allelic`` (project decision), so
+    they never reach the matrix. Inputs must already be cleaned (upper-case,
+    stripped, NaN -> "").
     """
     use2 = (a2 != "") & (a2 != ref)
     use1 = (a1 != "") & (a1 != ref)
@@ -221,15 +286,24 @@ def annotate_sbs96(
     maf: pd.DataFrame,
     sample_col: str = "Tumor_Sample_Barcode",
     context_col: str = "CONTEXT",
+    adjacent_snvs: AdjacentSNVMode = "exclude",
 ) -> pd.DataFrame:
     """Annotate every MAF row with its SBS96 channel or the reason it was dropped.
 
-    Returns a copy of ``maf`` (with a fresh RangeIndex) and four extra columns:
+    Returns a copy of ``maf`` (with a fresh RangeIndex) and six extra columns:
 
     - ``alt_allele``: chosen tumour allele (see :func:`_pick_alt`); ``None`` if none
     - ``trinuc_plus``: plus-strand trinucleotide (before pyrimidine folding)
     - ``sbs96_channel``: COSMIC label (e.g. ``A[C>T]G``) or ``None`` if dropped
     - ``drop_reason``: one of :data:`DROP_REASONS` or ``None`` if kept
+    - ``adjacent_run_id`` / ``adjacent_run_len``: for rows in a run of adjacent
+      SNVs, an ID shared by the rows of one run and the run length; ``<NA>``
+      otherwise. Filled in both ``adjacent_snvs`` modes.
+
+    ``adjacent_snvs``: ``"exclude"`` (default) drops rows in adjacent-SNV runs
+    as ``adjacent_snv_dbs``; ``"count_as_sbs"`` counts them as ordinary SBS,
+    as SigProfilerMatrixGenerator 1.6.0 does. Any other value raises ``ValueError``.
+    See the module docstring.
 
     Pyrimidine convention: COSMIC channels are named by the pyrimidine (C or T)
     partner of the mutated base pair. If ``Reference_Allele`` is a purine (A/G),
@@ -240,10 +314,13 @@ def annotate_sbs96(
     Raises ``ValueError`` if required columns (including ``CONTEXT``) are
     missing, or if any row has a missing/empty sample ID: such rows could not be
     attributed to a sample, so they are rejected loudly rather than dropped.
-    If a ``Strand`` column is present, rows whose value is not ``+`` (including
+    Sample IDs and chromosome names are whitespace-stripped before use, so the
+    returned ``sample_col`` holds the stripped IDs (``" S1"`` and ``"S1"`` are
+    one sample). If a ``Strand`` column is present, rows whose value is not ``+`` (including
     empty) are dropped as ``non_plus_strand``, because ``CONTEXT`` is assumed
     to be plus-strand sequence.
     """
+    _check_adjacent_mode(adjacent_snvs)
     required = [sample_col if c == "Tumor_Sample_Barcode" else c for c in _REQUIRED_COLS]
     missing = [c for c in required if c not in maf.columns]
     if missing:
@@ -260,13 +337,19 @@ def annotate_sbs96(
     # Fresh RangeIndex so positional bookkeeping below is safe for any input index.
     out = maf.reset_index(drop=True)
 
-    sample = out[sample_col]
-    no_sample = sample.isna() | (sample.astype(str).str.strip() == "")
+    raw_sample = out[sample_col]
+    sample = raw_sample.astype(object).where(raw_sample.notna(), "").astype(str).str.strip()
+    no_sample = sample == ""
     if no_sample.any():
         raise ValueError(
             f"{int(no_sample.sum())} of {len(out)} MAF rows have a missing or empty "
             f"{sample_col!r} value; cannot assign them to a sample."
         )
+    # Normalised once and used everywhere (dedupe, adjacency, matrix columns):
+    # surrounding whitespace is stripped, so " S1" and "S1" are the same sample.
+    out[sample_col] = sample
+    chrom = out["Chromosome"].astype(object).where(out["Chromosome"].notna(), "")
+    chrom = chrom.astype(str).str.strip()
 
     ref = _clean(out["Reference_Allele"])
     a1 = _clean(out["Tumor_Seq_Allele1"])
@@ -279,6 +362,7 @@ def annotate_sbs96(
     # Ref and both tumour alleles must be ACGT (alleles may be empty); "-"/"N" -> non_acgt.
     alleles_ok = ref.isin(_BASES) & (a1.isin(_BASES) | (a1 == "")) & (a2.isin(_BASES) | (a2 == ""))
     has_alt = alt != ""
+    tri_allelic = (a1 != "") & (a2 != "") & (a1 != ref) & (a2 != ref) & (a1 != a2)
     if "Strand" in out.columns:
         plus_strand = _clean(out["Strand"]) == "+"
     else:
@@ -296,6 +380,7 @@ def annotate_sbs96(
     _assign(~is_snp, "not_snp")
     _assign(~alleles_ok, "non_acgt")
     _assign(~has_alt, "no_alt")
+    _assign(tri_allelic, "tri_allelic")
     _assign(~plus_strand, "non_plus_strand")
     _assign(~trinuc_ok, "missing_context")
     _assign(~centre_ok, "context_mismatch")
@@ -305,8 +390,8 @@ def annotate_sbs96(
     # duplicate is counted once and never double-counted with another reason.
     key = pd.DataFrame(
         {
-            "s": sample.astype(str),
-            "c": out["Chromosome"].astype(str),
+            "s": sample,
+            "c": chrom,
             "p": pd.to_numeric(out["Start_Position"], errors="coerce"),
             "r": ref,
             "a": alt,
@@ -315,6 +400,33 @@ def annotate_sbs96(
     kept = reason.isna()
     dup = kept & key.where(kept).duplicated(keep="first")
     reason[dup] = "duplicate"
+    kept = reason.isna()
+
+    # Adjacent SNVs -> doublets / MNVs (see module docstring). Only rows still
+    # kept after every check and dedupe take part, so dropped rows and exact
+    # duplicates never create adjacency.
+    # Runs are detected over DISTINCT (sample, chrom, pos) among kept rows, so a
+    # multi-allelic site (two kept alts at one position) neither breaks a run
+    # nor escapes it; run length = number of distinct positions.
+    run_id = pd.Series(pd.NA, index=out.index, dtype="Int64")
+    run_len = pd.Series(pd.NA, index=out.index, dtype="Int64")
+    k = key.loc[kept, ["s", "c", "p"]]
+    if len(k):
+        loci = k.drop_duplicates().sort_values(["s", "c", "p"], kind="stable")
+        same_run = (
+            (loci["s"] == loci["s"].shift())
+            & (loci["c"] == loci["c"].shift())
+            & (loci["p"] - loci["p"].shift() == 1)
+        )
+        loci = loci.assign(rid=(~same_run).cumsum().to_numpy())
+        loci["rlen"] = loci.groupby("rid")["p"].transform("size")
+        loci = loci[loci["rlen"] >= 2]
+        merged = k.reset_index().merge(loci, on=["s", "c", "p"], how="inner")
+        idx = merged["index"].to_numpy()
+        run_id[idx] = merged["rid"].to_numpy()
+        run_len[idx] = merged["rlen"].to_numpy()
+        if adjacent_snvs == "exclude":
+            reason[idx] = "adjacent_snv_dbs"
     kept = reason.isna()
 
     # Pyrimidine folding, vectorised.
@@ -328,6 +440,8 @@ def annotate_sbs96(
     out["trinuc_plus"] = _keep_or_none(trinuc, trinuc != "")
     out["sbs96_channel"] = _keep_or_none(label, kept)
     out["drop_reason"] = reason
+    out["adjacent_run_id"] = run_id
+    out["adjacent_run_len"] = run_len
     return out
 
 
@@ -341,10 +455,13 @@ def _samples_in_order(maf: pd.DataFrame, sample_col: str) -> list[str]:
 
 
 def drop_summary(annotated: pd.DataFrame, sample_col: str = "Tumor_Sample_Barcode") -> pd.DataFrame:
-    """Per-sample counts of kept SNVs and of each drop reason.
+    """Per-sample counts of kept SNVs and of each drop reason, plus event counts.
 
-    Index = samples (MAF order), columns = ``kept`` + :data:`DROP_REASONS`
-    + ``total``. Rows sum to the number of input rows for that sample.
+    Index = samples (MAF order). Columns = ``kept`` + :data:`DROP_REASONS` +
+    ``total`` (row counts; ``kept`` + reasons == ``total`` == input rows for the
+    sample), then :data:`EVENT_COLUMNS`. These are *event* counts, not rows:
+    ``dbs_events`` = adjacent-SNV runs of exactly 2 rows, ``mnv_events`` = runs
+    of 3+ rows. They are not part of ``total``.
     """
     samples = _samples_in_order(annotated, sample_col)
     status = annotated["drop_reason"].fillna("kept")
@@ -352,6 +469,19 @@ def drop_summary(annotated: pd.DataFrame, sample_col: str = "Tumor_Sample_Barcod
     cols = ["kept", *DROP_REASONS]
     tab = tab.reindex(index=samples, columns=cols, fill_value=0).astype(int)
     tab["total"] = tab.sum(axis=1)
+
+    runs = annotated.loc[
+        annotated["adjacent_run_id"].notna(), [sample_col, "adjacent_run_id", "adjacent_run_len"]
+    ]
+    runs = runs.drop_duplicates(subset="adjacent_run_id")
+    runs_sample = runs[sample_col].astype(str)
+    is_dbs = runs["adjacent_run_len"] == 2
+    tab["dbs_events"] = (
+        runs_sample[is_dbs].value_counts().reindex(samples, fill_value=0).astype(int)
+    )
+    tab["mnv_events"] = (
+        runs_sample[~is_dbs].value_counts().reindex(samples, fill_value=0).astype(int)
+    )
     tab.index.name = sample_col
     tab.columns.name = None
     return tab
@@ -362,6 +492,7 @@ def build_sbs96_matrix(
     sample_col: str = "Tumor_Sample_Barcode",
     return_dropped: bool = False,
     context_col: str = "CONTEXT",
+    adjacent_snvs: AdjacentSNVMode = "exclude",
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     """Build a 96 x n_samples SBS count matrix from a MAF.
 
@@ -376,6 +507,11 @@ def build_sbs96_matrix(
         If True, also return the per-sample drop summary from :func:`drop_summary`.
     context_col
         Column holding plus-strand reference context centred on the variant.
+    adjacent_snvs
+        ``"exclude"`` (default, conservative: SBS and DBS kept mutually
+        exclusive) or ``"count_as_sbs"`` (counts them as ordinary
+        SBS, as SigProfilerMatrixGenerator 1.6.0 does). Event counts are
+        reported either way. See the module docstring.
 
     Returns
     -------
@@ -390,8 +526,11 @@ def build_sbs96_matrix(
     The drop summary is always logged at INFO level (totals per reason), so no
     row is ever dropped silently.
     """
+    _check_adjacent_mode(adjacent_snvs)  # fail before reading a large file
     df = read_maf(maf) if isinstance(maf, (str, Path)) else maf
-    annotated = annotate_sbs96(df, sample_col=sample_col, context_col=context_col)
+    annotated = annotate_sbs96(
+        df, sample_col=sample_col, context_col=context_col, adjacent_snvs=adjacent_snvs
+    )
     samples = _samples_in_order(annotated, sample_col)
 
     kept = annotated[annotated["drop_reason"].isna()]
@@ -412,6 +551,12 @@ def build_sbs96_matrix(
         int(totals["total"]),
         int(totals["kept"]),
         ", ".join(f"{r}={int(totals[r])}" for r in DROP_REASONS),
+    )
+    logger.info(
+        "SBS96: adjacent-SNV events (%s): %d DBS (2 rows), %d MNV (3+ rows)",
+        "excluded" if adjacent_snvs == "exclude" else "counted as SBS",
+        int(totals["dbs_events"]),
+        int(totals["mnv_events"]),
     )
     if return_dropped:
         return matrix, summary

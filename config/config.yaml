@@ -112,6 +112,15 @@ signatures:
       - Each user obtains the matrix by installing SigProfilerAssignment locally.
       - Cite COSMIC v3.4 and Alexandrov et al. 2020 in the README and on figures.
 
+profile:
+  # Same-sample SNVs at adjacent positions (likely doublets/MNVs reported as separate SNPs).
+  #   exclude      - leave them out of SBS96 (default; conservative, SBS and DBS kept separate)
+  #   count_as_sbs - count them as ordinary SBS, as SigProfilerMatrixGenerator 1.6.0 does
+  # Read by `fingerprints profile` (--config, default config/config.yaml); the
+  # --adjacent-snvs flag overrides it. Missing file or key -> exclude.
+  # Event counts (dbs_events / mnv_events) are reported in both modes. See docs/decisions.md D5.
+  adjacent_snvs: exclude
+
 fitting:
   # Tumours with fewer SNVs than this are skipped, and the skipped count is reported.
   min_snvs: 50

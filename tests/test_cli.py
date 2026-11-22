@@ -20,8 +20,12 @@ class FakeProfile:
         self.calls: list[dict] = []
         self.raises: Exception | None = None
 
-    def build_sbs96_matrix(self, maf_path, sample_col="Tumor_Sample_Barcode"):
-        self.calls.append({"maf_path": maf_path, "sample_col": sample_col})
+    def build_sbs96_matrix(
+        self, maf_path, sample_col="Tumor_Sample_Barcode", adjacent_snvs="exclude"
+    ):
+        self.calls.append(
+            {"maf_path": maf_path, "sample_col": sample_col, "adjacent_snvs": adjacent_snvs}
+        )
         if self.raises is not None:
             raise self.raises
         index = pd.Index([f"CH{i}" for i in range(96)], name="MutationType")
@@ -96,7 +100,9 @@ def test_profile_writes_tsv(tmp_path, maf, fake_profile):
 
     assert cli.main(["profile", str(maf), "--output", str(out)]) == 0
 
-    assert fake_profile.calls == [{"maf_path": maf, "sample_col": "Tumor_Sample_Barcode"}]
+    assert fake_profile.calls == [
+        {"maf_path": maf, "sample_col": "Tumor_Sample_Barcode", "adjacent_snvs": "exclude"}
+    ]
     written = pd.read_csv(out, sep="\t", index_col=0)
     assert written.shape == (96, 2)
     assert list(written.columns) == ["S1", "S2"]
@@ -109,6 +115,87 @@ def test_profile_passes_sample_col(tmp_path, maf, fake_profile):
     assert code == 0
     assert out.is_file()
     assert fake_profile.calls[0]["sample_col"] == "sample_id"
+
+
+def test_profile_passes_adjacent_snvs(tmp_path, maf, fake_profile):
+    out = tmp_path / "sbs96.tsv"
+    code = cli.main(["profile", str(maf), "-o", str(out), "--adjacent-snvs", "count_as_sbs"])
+    assert code == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+
+
+def test_profile_rejects_bad_adjacent_snvs(tmp_path, maf, fake_profile, capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["profile", str(maf), "-o", str(tmp_path / "x.tsv"), "--adjacent-snvs", "merge"])
+    assert exc.value.code == 2
+    assert "--adjacent-snvs" in capsys.readouterr().err
+    assert fake_profile.calls == []
+
+
+def _write_config(path, adjacent_snvs):
+    path.write_text(
+        f"genome_build: GRCh38\nprofile:\n  adjacent_snvs: {adjacent_snvs}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_config_sets_adjacent_snvs(tmp_path, maf, fake_profile):
+    cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
+    out = tmp_path / "sbs96.tsv"
+    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+
+
+def test_flag_overrides_config(tmp_path, maf, fake_profile):
+    cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
+    out = tmp_path / "sbs96.tsv"
+    argv = ["profile", str(maf), "-o", str(out), "--config", str(cfg), "--adjacent-snvs", "exclude"]
+    assert cli.main(argv) == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+
+
+def test_missing_config_falls_back_to_exclude(tmp_path, maf, fake_profile):
+    out = tmp_path / "sbs96.tsv"
+    argv = ["profile", str(maf), "-o", str(out), "--config", str(tmp_path / "nope.yaml")]
+    assert cli.main(argv) == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+
+
+def test_config_without_key_falls_back_to_exclude(tmp_path, maf, fake_profile):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("genome_build: GRCh38\nfitting:\n  min_snvs: 50\n", encoding="utf-8")
+    out = tmp_path / "sbs96.tsv"
+    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+
+
+def test_default_config_path_is_cwd_relative(tmp_path, maf, fake_profile, monkeypatch):
+    (tmp_path / "config").mkdir()
+    _write_config(tmp_path / "config" / "config.yaml", "count_as_sbs")
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["profile", str(maf), "-o", str(tmp_path / "sbs96.tsv")]) == 0
+    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+
+
+@pytest.mark.parametrize("content", ["profile:\n  adjacent_snvs: merge\n", "profile: [1, 2\n"])
+def test_bad_config_is_clean_error(tmp_path, maf, fake_profile, capsys, content):
+    cfg = tmp_path / "bad.yaml"
+    cfg.write_text(content, encoding="utf-8")
+    out = tmp_path / "sbs96.tsv"
+    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error: ")
+    assert str(cfg) in err
+    assert "Traceback" not in err
+    assert fake_profile.calls == []
+    assert not out.exists()
+
+
+def test_adjacent_snv_choices_match_profile_module():
+    from fingerprints.profile import ADJACENT_SNV_MODES
+
+    assert tuple(cli.ADJACENT_SNV_CHOICES) == tuple(ADJACENT_SNV_MODES)
 
 
 def test_profile_missing_maf_is_clean_error(tmp_path, fake_profile, capsys):

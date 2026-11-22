@@ -16,6 +16,7 @@ import pytest
 
 from fingerprints.profile import (
     DROP_REASONS,
+    EVENT_COLUMNS,
     SBS96_CHANNELS,
     SBS96_PLOT_ORDER,
     SUBSTITUTIONS,
@@ -37,28 +38,43 @@ EXPECTED_CELLS = {
         "G[T>C]A": 1,  # A>G in TAC -> GTA
         "C[T>A]G": 1,  # T>A in CTG
         "T[C>A]A": 1,  # alt carried in Tumor_Seq_Allele1
+        "T[C>T]G": 1,  # homozygous call (Allele1 == Allele2 != ref): kept
     },
     S2: {
         "T[C>A]T": 3,  # two C>A in TCT + G>T in AGA -> TCT
         "A[T>C]A": 1,
         "T[C>G]A": 1,  # G>C in TGA -> TCA
-        "A[C>T]G": 1,  # same locus as an S1 mutation, different sample: kept
+        "A[C>T]G": 2,  # same locus as an S1 mutation (other sample) + chr22:201
+        "T[T>C]G": 1,  # chr19:502 A>G (CAA -> TTG), next to S1 chr19:501, other sample
     },
     S3: {},  # indels only
 }
 
 EXPECTED_DROPS = {
-    S1: {"kept": 6, "duplicate": 1, "not_snp": 1, "context_mismatch": 1, "total": 9},
+    S1: {
+        "kept": 7,
+        "duplicate": 1,
+        "not_snp": 1,
+        "context_mismatch": 1,
+        "tri_allelic": 1,  # chr18:3000 C, A/T
+        "adjacent_snv_dbs": 2,  # chr19:500-501
+        "total": 13,
+        "dbs_events": 1,
+    },
     S2: {
-        "kept": 6,
+        "kept": 8,
         "not_snp": 1,
         "missing_context": 1,
         "non_acgt": 1,
         "no_alt": 1,
-        "total": 10,
+        "context_mismatch": 1,  # chr22:200; its neighbour chr22:201 is kept
+        "adjacent_snv_dbs": 3,  # chr21:100-102
+        "total": 16,
+        "mnv_events": 1,
     },
     S3: {"kept": 0, "not_snp": 2, "total": 2},
 }
+N_FIXTURE_ROWS = 31
 
 
 def _minimal_maf(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
@@ -67,7 +83,8 @@ def _minimal_maf(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
         {
             "Tumor_Sample_Barcode": ["X"] * len(rows),
             "Chromosome": ["chr1"] * len(rows),
-            "Start_Position": list(range(1, len(rows) + 1)),
+            # 10 bp apart so default rows are never adjacent (doublet rule)
+            "Start_Position": [10 * (i + 1) for i in range(len(rows))],
             "Variant_Type": ["SNP"] * len(rows),
             "Reference_Allele": [r[0] for r in rows],
             "Tumor_Seq_Allele1": [r[1] for r in rows],
@@ -153,10 +170,172 @@ def test_alt_falls_back_to_allele1():
     assert ann.loc[0, "sbs96_channel"] == "T[C>A]A"
 
 
-def test_allele2_preferred_when_both_differ():
+def test_tri_allelic_dropped():
     ann = annotate_sbs96(_minimal_maf([("C", "A", "T", "GGGGACGGGGG")]))
-    assert ann.loc[0, "alt_allele"] == "T"
+    assert ann.loc[0, "drop_reason"] == "tri_allelic"
+    assert ann.loc[0, "sbs96_channel"] is None
+
+
+def test_homozygous_call_kept():
+    ann = annotate_sbs96(_minimal_maf([("C", "T", "T", "GGGGACGGGGG")]))
+    assert ann.loc[0, "drop_reason"] is None
     assert ann.loc[0, "sbs96_channel"] == "A[C>T]G"
+
+
+# ------------------------------------------------------- adjacent SNVs (DBS)
+
+
+def _snvs(rows: list[tuple[str, str, int]]) -> pd.DataFrame:
+    """rows: (sample, chrom, pos); every row a valid C>T in ACG."""
+    maf = _minimal_maf([("C", "C", "T", "TTTTACGTTTT")] * len(rows))
+    maf["Tumor_Sample_Barcode"] = [r[0] for r in rows]
+    maf["Chromosome"] = [r[1] for r in rows]
+    maf["Start_Position"] = [r[2] for r in rows]
+    return maf
+
+
+def test_adjacent_pair_excluded_one_dbs_event():
+    maf = _snvs([("X", "chr1", 100), ("X", "chr1", 101), ("X", "chr1", 200)])
+    ann = annotate_sbs96(maf)
+    assert list(ann["drop_reason"]) == ["adjacent_snv_dbs", "adjacent_snv_dbs", None]
+    assert list(ann["adjacent_run_len"].iloc[:2]) == [2, 2]
+    assert ann.loc[0, "adjacent_run_id"] == ann.loc[1, "adjacent_run_id"]
+    matrix, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert int(matrix["X"].sum()) == 1
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 2
+    assert dropped.loc["X", "dbs_events"] == 1
+    assert dropped.loc["X", "mnv_events"] == 0
+
+
+def test_run_of_three_excluded_one_mnv_event():
+    maf = _snvs([("X", "chr1", 102), ("X", "chr1", 100), ("X", "chr1", 101)])  # unsorted
+    matrix, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert int(matrix["X"].sum()) == 0
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 3
+    assert dropped.loc["X", "dbs_events"] == 0
+    assert dropped.loc["X", "mnv_events"] == 1
+
+
+def test_two_separate_runs_counted_separately():
+    maf = _snvs([("X", "chr1", 100), ("X", "chr1", 101), ("X", "chr1", 300), ("X", "chr1", 301)])
+    _, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 4
+    assert dropped.loc["X", "dbs_events"] == 2
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [("X", "chr1", 100), ("Y", "chr1", 101)],  # different samples
+        [("X", "chr1", 100), ("X", "chr2", 101)],  # different chromosomes
+        [("X", "chr1", 100), ("X", "chr1", 102)],  # 2 bp apart
+    ],
+)
+def test_not_adjacent_kept(rows):
+    ann = annotate_sbs96(_snvs(rows))
+    assert ann["drop_reason"].isna().all()
+    assert ann["adjacent_run_id"].isna().all()
+
+
+def test_duplicate_neighbour_does_not_make_run():
+    # 100 (twice) + 101: the duplicate is removed first, leaving a pair 100/101.
+    # 200 (twice): duplicate only, same position, never "adjacent" to itself.
+    maf = _snvs([("X", "chr1", 100), ("X", "chr1", 100), ("X", "chr1", 101)])
+    maf = pd.concat([maf, _snvs([("X", "chr1", 200), ("X", "chr1", 200)])], ignore_index=True)
+    ann = annotate_sbs96(maf)
+    assert list(ann["drop_reason"]) == [
+        "adjacent_snv_dbs",
+        "duplicate",
+        "adjacent_snv_dbs",
+        None,
+        "duplicate",
+    ]
+    _, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert dropped.loc["X", "dbs_events"] == 1
+
+
+def _snvs_alt(rows: list[tuple[str, str, int, str]]) -> pd.DataFrame:
+    """rows: (sample, chrom, pos, alt); every row a valid C>alt in ACA context."""
+    maf = _minimal_maf([("C", "C", r[3], "TTTTACATTTT") for r in rows])
+    maf["Tumor_Sample_Barcode"] = [r[0] for r in rows]
+    maf["Chromosome"] = [r[1] for r in rows]
+    maf["Start_Position"] = [r[2] for r in rows]
+    return maf
+
+
+@pytest.mark.parametrize("mode", ["exclude", "count_as_sbs"])
+def test_multiallelic_site_next_to_snv_joins_run_any_order(mode):
+    """42 C>T, 43 C>T, 43 C>A: one DBS event over 2 positions, all 3 rows in it."""
+    rows = [("X", "chr1", 42, "T"), ("X", "chr1", 43, "T"), ("X", "chr1", 43, "A")]
+    results = []
+    for order in ([0, 1, 2], [2, 1, 0], [1, 2, 0]):
+        maf = _snvs_alt([rows[i] for i in order])
+        ann = annotate_sbs96(maf, adjacent_snvs=mode)
+        assert ann["adjacent_run_len"].tolist() == [2, 2, 2]
+        assert ann["adjacent_run_id"].nunique() == 1
+        expected_reason = "adjacent_snv_dbs" if mode == "exclude" else None
+        assert all(r == expected_reason for r in ann["drop_reason"])
+        matrix, dropped = build_sbs96_matrix(maf, return_dropped=True, adjacent_snvs=mode)
+        assert dropped.loc["X", "dbs_events"] == 1
+        assert dropped.loc["X", "mnv_events"] == 0
+        results.append((matrix, dropped))
+    for matrix, dropped in results[1:]:
+        pd.testing.assert_frame_equal(matrix, results[0][0])
+        pd.testing.assert_frame_equal(dropped, results[0][1])
+    if mode == "exclude":
+        assert int(results[0][0]["X"].sum()) == 0
+    else:
+        assert int(results[0][0]["X"].sum()) == 3
+        assert results[0][0].loc["A[C>T]A", "X"] == 2
+        assert results[0][0].loc["A[C>A]A", "X"] == 1
+
+
+def test_multiallelic_then_neighbour_counts_positions():
+    """43 C>T, 43 C>A, 44 C>T: 3 rows, 2 positions -> 1 DBS event (not MNV)."""
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "A"), ("X", "chr1", 44, "T")])
+    ann = annotate_sbs96(maf)
+    assert ann["drop_reason"].tolist() == ["adjacent_snv_dbs"] * 3
+    _, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 3
+    assert dropped.loc["X", "dbs_events"] == 1
+    assert dropped.loc["X", "mnv_events"] == 0
+    # one more neighbour (45) -> 3 distinct positions -> MNV
+    maf = pd.concat([maf, _snvs_alt([("X", "chr1", 45, "T")])], ignore_index=True)
+    _, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 4
+    assert dropped.loc["X", "dbs_events"] == 0
+    assert dropped.loc["X", "mnv_events"] == 1
+
+
+def test_isolated_multiallelic_site_keeps_both_alts():
+    """Open question for biology review; current behaviour: both kept as SBS."""
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "A")])
+    ann = annotate_sbs96(maf)
+    assert ann["drop_reason"].isna().all()
+    assert ann["adjacent_run_id"].isna().all()
+    assert ann["sbs96_channel"].tolist() == ["A[C>T]A", "A[C>A]A"]
+
+
+def test_whitespace_in_sample_and_chrom_normalised():
+    maf = _snvs([("S1", "chr1", 100), (" S1 ", " chr1", 101), ("S1", "chr1 ", 100)])
+    ann = annotate_sbs96(maf)
+    # " S1 "/" chr1" is the same sample/chrom: 100 & 101 adjacent; 3rd row is a duplicate
+    assert ann["drop_reason"].tolist() == ["adjacent_snv_dbs", "adjacent_snv_dbs", "duplicate"]
+    assert ann["Tumor_Sample_Barcode"].tolist() == ["S1", "S1", "S1"]
+    matrix, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert list(matrix.columns) == ["S1"]
+    assert dropped.loc["S1", "total"] == 3
+    assert dropped.loc["S1", "dbs_events"] == 1
+
+
+def test_dropped_neighbour_is_ignored():
+    """Documented choice: only valid SNVs take part in adjacency."""
+    maf = _snvs([("X", "chr1", 100), ("X", "chr1", 101), ("X", "chr1", 102)])
+    maf.loc[0, "CONTEXT"] = "TTTTAAGTTTT"  # context_mismatch
+    maf.loc[2, "Variant_Type"] = "DNP"  # not_snp
+    ann = annotate_sbs96(maf)
+    assert list(ann["drop_reason"]) == ["context_mismatch", None, "not_snp"]
+    assert ann.loc[1, "sbs96_channel"] == "A[C>T]G"
 
 
 def test_lowercase_input_is_normalised():
@@ -244,7 +423,7 @@ def test_non_unique_input_index_is_safe():
 
 def test_read_maf_skips_header_lines():
     df = read_maf(FIXTURE)
-    assert len(df) == 21
+    assert len(df) == N_FIXTURE_ROWS
     assert df.columns[0] == "Hugo_Symbol"
     assert df["Start_Position"].dtype == "Int64"
 
@@ -263,23 +442,79 @@ def test_full_fixture_matrix_exact():
             expected.loc[ch, sample] = n
     pd.testing.assert_frame_equal(matrix, expected, check_names=False)
 
-    assert matrix.sum().to_dict() == {S1: 6, S2: 6, S3: 0}
+    assert matrix.sum().to_dict() == {S1: 7, S2: 8, S3: 0}
     assert (matrix[S3] == 0).all()  # indel-only sample still present
 
 
 def test_full_fixture_drop_summary_exact():
     _, dropped = build_sbs96_matrix(FIXTURE, return_dropped=True)
-    assert list(dropped.columns) == ["kept", *DROP_REASONS, "total"]
+    assert list(dropped.columns) == ["kept", *DROP_REASONS, "total", *EVENT_COLUMNS]
     assert list(dropped.index) == [S1, S2, S3]
     for sample, counts in EXPECTED_DROPS.items():
         full = {c: 0 for c in dropped.columns} | counts
         assert dropped.loc[sample].to_dict() == full, sample
     # every input row is accounted for
-    assert int(dropped["total"].sum()) == 21
-    assert (dropped.drop(columns="total").sum(axis=1) == dropped["total"]).all()
+    assert int(dropped["total"].sum()) == N_FIXTURE_ROWS
+    row_cols = ["kept", *DROP_REASONS]
+    assert (dropped[row_cols].sum(axis=1) == dropped["total"]).all()
     # kept matches the matrix column sums
     matrix = build_sbs96_matrix(FIXTURE)
     assert (matrix.sum() == dropped["kept"]).all()
+
+
+def test_count_as_sbs_full_fixture_exact():
+    """Adjacent SNVs kept as SBS: S1 +2 (chr19:500-501), S2 +3 (chr21:100-102)."""
+    matrix, dropped = build_sbs96_matrix(FIXTURE, return_dropped=True, adjacent_snvs="count_as_sbs")
+    cells = {s: dict(c) for s, c in EXPECTED_CELLS.items()}
+    # chr19:500/501 C>T, plus-strand contexts ACC / CCA -> A[C>T]C and C[C>T]A
+    cells[S1]["A[C>T]C"] = 1
+    cells[S1]["C[C>T]A"] = 1
+    # chr21:100-102 C>A, contexts TCC / CCC / CCT
+    cells[S2]["T[C>A]C"] = 1
+    cells[S2]["C[C>A]C"] = 1
+    cells[S2]["C[C>A]T"] = 1
+    expected = pd.DataFrame(0, index=SBS96_CHANNELS, columns=[S1, S2, S3], dtype="int64")
+    for sample, sample_cells in cells.items():
+        for ch, n in sample_cells.items():
+            expected.loc[ch, sample] = n
+    pd.testing.assert_frame_equal(matrix, expected, check_names=False)
+    assert matrix.sum().to_dict() == {S1: 9, S2: 11, S3: 0}
+
+    assert (dropped["adjacent_snv_dbs"] == 0).all()
+    assert dropped["kept"].to_dict() == {S1: 9, S2: 11, S3: 0}
+    assert int(dropped["total"].sum()) == N_FIXTURE_ROWS
+    # Event counts identical to the default (exclude) mode.
+    _, dropped_excl = build_sbs96_matrix(FIXTURE, return_dropped=True)
+    pd.testing.assert_frame_equal(dropped[EVENT_COLUMNS], dropped_excl[EVENT_COLUMNS])
+    assert dropped.loc[S1, "dbs_events"] == 1 and dropped.loc[S2, "mnv_events"] == 1
+    # All other drop reasons unchanged.
+    others = [r for r in DROP_REASONS if r != "adjacent_snv_dbs"]
+    pd.testing.assert_frame_equal(dropped[others], dropped_excl[others])
+
+
+def test_count_as_sbs_keeps_run_annotation():
+    maf = _snvs([("X", "chr1", 100), ("X", "chr1", 101)])
+    ann = annotate_sbs96(maf, adjacent_snvs="count_as_sbs")
+    assert ann["drop_reason"].isna().all()
+    assert list(ann["adjacent_run_len"]) == [2, 2]
+
+
+def test_adjacent_snvs_default_is_exclude():
+    import inspect
+
+    for fn in (build_sbs96_matrix, annotate_sbs96):
+        assert inspect.signature(fn).parameters["adjacent_snvs"].default == "exclude"
+    pd.testing.assert_frame_equal(
+        build_sbs96_matrix(FIXTURE), build_sbs96_matrix(FIXTURE, adjacent_snvs="exclude")
+    )
+
+
+@pytest.mark.parametrize("bad", ["merge", "EXCLUDE", "", None])
+def test_adjacent_snvs_invalid_value_raises(bad):
+    with pytest.raises(ValueError, match="adjacent_snvs must be one of"):
+        build_sbs96_matrix(FIXTURE, adjacent_snvs=bad)
+    with pytest.raises(ValueError, match="adjacent_snvs must be one of"):
+        annotate_sbs96(read_maf(FIXTURE), adjacent_snvs=bad)
 
 
 def test_dataframe_input_equals_path_input():
@@ -304,6 +539,8 @@ def test_drop_summary_is_logged(caplog):
     with caplog.at_level("INFO", logger="fingerprints.profile"):
         build_sbs96_matrix(FIXTURE)
     msg = " ".join(r.getMessage() for r in caplog.records)
-    assert "12 SNVs kept" in msg
+    assert "15 SNVs kept" in msg
+    assert "tri_allelic=1" in msg and "adjacent_snv_dbs=5" in msg
+    assert "1 DBS (2 rows), 1 MNV (3+ rows)" in msg
     assert "not_snp=4" in msg and "duplicate=1" in msg
     assert "missing_position=0" in msg and "non_plus_strand=0" in msg
