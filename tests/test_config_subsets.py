@@ -95,5 +95,21 @@ def test_validation_signatures_present(subsets: dict, project: str, required: se
     assert not missing, f"{project}: missing validation signatures {missing}"
 
 
-def test_subsets_marked_proposed(config: dict) -> None:
-    assert "proposed" in config["fitting"]["signature_subsets_status"]
+def test_subsets_marked_approved(config: dict) -> None:
+    assert config["fitting"]["signature_subsets_status"].startswith("approved")
+
+
+def test_signoff_decisions(subsets: dict) -> None:
+    """D7 sign-off: SBS18 in lung and colorectal; SBS21 dropped; SBS88/SBS36/SBS10c/d absent."""
+    for pid in ("TCGA-LUAD", "TCGA-LUSC", "TCGA-COAD", "TCGA-READ"):
+        assert "SBS18" in subsets[pid], pid
+    for pid in ("TCGA-COAD", "TCGA-READ"):
+        assert "SBS21" not in subsets[pid]
+        assert not {"SBS88", "SBS36", "SBS10c", "SBS10d"} & set(subsets[pid])
+    for pid in ("TCGA-SKCM", "TCGA-COAD", "TCGA-READ"):
+        assert not {"SBS2", "SBS13"} & set(subsets[pid]), f"{pid}: APOBEC not in v1 subset"
+
+
+def test_mmr_summed_set_is_fitted_in_colorectal(subsets: dict) -> None:
+    """The MMR validation sums SBS6+14+15+20+26+44; all must be fittable."""
+    assert {"SBS6", "SBS14", "SBS15", "SBS20", "SBS26", "SBS44"} <= set(subsets["TCGA-COAD"])

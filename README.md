@@ -64,6 +64,20 @@ References (checked against PubMed on 2026-11-22; PMIDs given so they can be re-
    somatic mutations with SigProfilerAssignment. *Bioinformatics* 39(12):btad756.
    doi:10.1093/bioinformatics/btad756. PMID 38096571.
 
+## Known limitations
+
+- **Colibactin (SBS88) is not fitted.** It is a COSMIC v3.4 signature with colorectal relevance
+  (Pleguezuelos-Manzano et al. 2020), but it was published after Alexandrov et al. 2020, on which
+  the cohort signature subsets are based. SBS36 and SBS10c/d are also not fitted.
+- **SBS1 and SBS6 overlap** (cosine similarity about 0.9), so some low-level SBS6 ("mismatch
+  repair") exposure in microsatellite-stable colorectal tumours may really be SBS1.
+- **MSI labels are bioinformatics-derived** (GDC MSIsensor2 calls, 20% cutoff), not clinical MSI
+  or mismatch-repair tests.
+- **Signature subsets rest on figure estimates.** Prevalences were read from Extended Data
+  Fig. 5 of Alexandrov et al. 2020 and are approximate. The paper has no TCGA-only breakdown.
+- **Signature activity is not a diagnosis.** Refitting reports which known signatures best
+  explain a tumour's mutations; it does not prove a cause.
+
 ## Disclaimer
 
 This project is for research and education only. It is not a medical device and must not be

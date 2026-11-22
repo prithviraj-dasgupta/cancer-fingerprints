@@ -146,6 +146,31 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
   Phase 2 fitting runs**.
 - *Where:* `config/config.yaml`, `fit.py` (Phase 2).
 
+#### D7 sign-off: cohort signature subsets (approved 2026-11-22)
+Subsets are in `config/config.yaml` (`fitting.signature_subsets`), proposed from Alexandrov et
+al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
+1. **Core/minor cut-off:** about 20% of tumours in ED Fig. 5. Approved.
+2. **SBS18** is kept in lung **and added to colorectal**. Run a with/without-SBS18
+   sensitivity check for the smoker vs never-smoker result.
+3. **Newer colorectal signatures** (SBS88 colibactin, SBS36, SBS10c/d) are **not** in the v1
+   fit. SBS88 (Pleguezuelos-Manzano et al. 2020) is listed as a known limitation in the README.
+4. **Colorectal:** SBS21 is dropped (near-duplicate of SBS26). There is **no
+   minimum-exposure gate and no separate MSS list**, because both would use MSI status to
+   shape the fit that is then tested against MSI status (circular).
+   - MMR validation: test the **summed MMR exposure (SBS6+14+15+20+26+44)** in MSI vs MSS.
+   - Report the SBS1/SBS6 overlap as a limitation.
+5. **Plain-English summaries** group signatures, while tables keep the individual ones:
+   - SBS1 + SBS5 + SBS40a: "background / ageing-related processes (SBS40a: cause unknown)";
+   - SBS7a–d + SBS38: "UV light (SBS38 proposed)".
+6. **APOBEC (SBS2/SBS13)** is not added to melanoma or colorectal: they fall below the 20%
+   rule, which is applied consistently.
+7. **Prevalences** are figure estimates. Label them approximate and cite the figure (ED Fig. 5).
+- Final subsets: LUAD and LUSC: SBS1, 2, 4, 5, 13, 18. SKCM: SBS1, 5, 7a–d, 38. COAD and READ
+  (shared): SBS1, 5, 40a, 44, 6, 15, 26, 14, 20, 10a, 10b, 28, 18.
+- Phase 2 sensitivity checks (all reported): SBS18 with/without (lung smoker vs never-smoker);
+  `min_snvs` 20 and 100; `adjacent_snvs: count_as_sbs` (melanoma SBS7, D5); MSI scores
+  0.15–0.25 excluded (D4).
+
 ### D8. Citations
 - Signatures: Alexandrov L.B. et al. (2020) The repertoire of mutational signatures in human
   cancer. *Nature* 578:94–101.
