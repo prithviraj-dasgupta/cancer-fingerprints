@@ -1,0 +1,44 @@
+# Data and large files (never commit raw data or genome references).
+# Directories are anchored to the repo root so same-named package/test dirs are not caught.
+/data/
+/results/cache/
+/reference/
+/references/
+/genomes/
+**/SigProfilerMatrixGenerator/references/
+*.fa
+*.fa.gz
+*.fasta
+*.fasta.gz
+*.2bit
+*.fai
+*.bam
+*.bai
+*.cram
+*.vcf.gz
+/*.maf*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local agent settings
+.claude/settings.local.json
+
+# Tiny test fixtures (FASTA/MAF/VCF) must always be committable. Keep this LAST.
+!tests/fixtures/**

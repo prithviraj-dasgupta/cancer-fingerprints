@@ -1,0 +1,123 @@
+{
+ "data": {
+  "hits": [
+   {
+    "id": "case-0001",
+    "case_id": "case-0001",
+    "submitter_id": "TCGA-XX-0001",
+    "primary_site": "Bronchus and lung",
+    "disease_type": "Adenomas and Adenocarcinomas",
+    "project": {
+     "project_id": "TCGA-LUAD"
+    },
+    "demographic": {
+     "gender": "female",
+     "race": "white",
+     "ethnicity": "not hispanic or latino",
+     "vital_status": "Alive",
+     "age_at_index": 72,
+     "days_to_death": null
+    },
+    "diagnoses": [
+     {
+      "submitter_id": "TCGA-XX-0001_diagnosis2",
+      "primary_diagnosis": "Not Reported",
+      "classification_of_tumor": "not reported",
+      "age_at_diagnosis": null
+     },
+     {
+      "submitter_id": "TCGA-XX-0001_diagnosis",
+      "primary_diagnosis": "Adenocarcinoma, NOS",
+      "classification_of_tumor": "primary",
+      "diagnosis_is_primary_disease": true,
+      "age_at_diagnosis": 26538,
+      "ajcc_pathologic_stage": "Stage IB",
+      "tissue_or_organ_of_origin": "Upper lobe, lung",
+      "morphology": "8140/3",
+      "icd_10_code": "C34.1"
+     }
+    ],
+    "exposures": [
+     {
+      "exposure_type": "Alcohol",
+      "alcohol_history": "Yes"
+     },
+     {
+      "exposure_type": "Tobacco",
+      "tobacco_smoking_status": "Current Reformed Smoker for < or = 15 yrs",
+      "pack_years_smoked": 40.0,
+      "tobacco_smoking_onset_year": 1960,
+      "tobacco_smoking_quit_year": 1990
+     }
+    ]
+   },
+   {
+    "id": "case-0002",
+    "case_id": "case-0002",
+    "submitter_id": "TCGA-XX-0002",
+    "primary_site": "Skin",
+    "disease_type": "Nevi and Melanomas",
+    "project": {
+     "project_id": "TCGA-SKCM"
+    },
+    "demographic": {
+     "gender": "male",
+     "vital_status": "Dead",
+     "age_at_index": 55,
+     "days_to_death": 900
+    },
+    "diagnoses": [
+     {
+      "submitter_id": "TCGA-XX-0002_diagnosis",
+      "primary_diagnosis": "Malignant melanoma, NOS",
+      "age_at_diagnosis": 20100
+     }
+    ]
+   },
+   {
+    "id": "case-0003",
+    "case_id": "case-0003",
+    "submitter_id": "TCGA-XX-0003",
+    "project": {
+     "project_id": "TCGA-LUSC"
+    },
+    "diagnoses": [
+     {
+      "submitter_id": "TCGA-XX-0003_diagnosis2",
+      "primary_diagnosis": "Not Reported",
+      "classification_of_tumor": "not reported"
+     },
+     {
+      "submitter_id": "TCGA-XX-0003_diagnosis",
+      "primary_diagnosis": "Squamous cell carcinoma, NOS",
+      "classification_of_tumor": "Primary"
+     }
+    ],
+    "exposures": [
+     {
+      "exposure_type": "Tobacco",
+      "tobacco_smoking_status": "Not Reported"
+     },
+     {
+      "exposure_type": "Tobacco",
+      "tobacco_smoking_status": "Current Smoker",
+      "pack_years_smoked": 50
+     },
+     {
+      "exposure_type": "Tobacco",
+      "tobacco_smoking_status": "Lifelong Non-Smoker"
+     }
+    ]
+   }
+  ],
+  "pagination": {
+   "count": 3,
+   "total": 3,
+   "size": 500,
+   "from": 0,
+   "page": 1,
+   "pages": 1
+  }
+ },
+ "warnings": {}
+}

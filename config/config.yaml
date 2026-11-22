@@ -1,0 +1,136 @@
+# Cancer Fingerprints: project configuration.
+# All paths are relative to the repository root. data/ is gitignored.
+
+genome_build: GRCh38
+
+paths:
+  raw_maf: data/raw/maf
+  raw_clinical: data/raw/clinical
+  raw_signatures: data/raw/signatures
+  processed: data/processed
+
+# TCGA projects in scope for v1. `cancer_type` is the grouping label used in analyses.
+# `fetch_msi: true` also pulls MSI status/score metadata (GDC computes these per tumour
+# BAM; the BAMs are controlled-access but the msi_* metadata fields are open).
+# Live check 2026-11-22 (filter: msi_status not missing, one row per tumour BAM):
+#   TCGA-COAD: 941 files / 453 cases (MSI 175, MSS 766); 461 cases in project
+#   TCGA-READ: 353 files / 169 cases (MSI 13, MSS 340); 172 cases in project
+# A case can have WXS and WGS rows; 17 COAD/READ cases disagree between them. All rows
+# are kept in msi.tsv. GDC calls MSI with MSIsensor2 (tumour-only) at a documented 20%
+# msi_score cutoff; see docs/decisions.md D4.
+#
+# MAF manifests: later steps must read MAFs via data/raw/maf/<project>/manifest.tsv, not
+# by globbing the folder. --limit runs write manifest.limited.tsv instead.
+projects:
+  - id: TCGA-LUAD
+    cancer_type: lung
+    label: Lung adenocarcinoma
+    fetch_msi: false
+  - id: TCGA-LUSC
+    cancer_type: lung
+    label: Lung squamous cell carcinoma
+    fetch_msi: false
+  - id: TCGA-SKCM
+    cancer_type: melanoma
+    label: Skin cutaneous melanoma
+    fetch_msi: false
+  - id: TCGA-COAD
+    cancer_type: colorectal
+    label: Colon adenocarcinoma
+    fetch_msi: true
+  - id: TCGA-READ
+    cancer_type: colorectal
+    label: Rectum adenocarcinoma
+    fetch_msi: true
+
+gdc:
+  api_url: https://api.gdc.cancer.gov
+  # Filter values checked against the live GDC API on 2026-11-22 (data release current at
+  # that date). These return 618 LUAD, 549 LUSC, 472 SKCM, 457 COAD and 161 READ files.
+  maf_filters:
+    data_category: Simple Nucleotide Variation
+    data_type: Masked Somatic Mutation
+    data_format: MAF
+    access: open
+    workflow_type: Aliquot Ensemble Somatic Variant Merging and Masking
+  http:
+    connect_timeout: 10   # seconds
+    read_timeout: 120     # seconds
+    retries: 5
+    backoff_factor: 1.0   # sleeps 1, 2, 4, 8 ... seconds between retries
+    page_size: 500
+
+signatures:
+  # COSMIC SBS reference signatures are taken from the copy bundled inside the
+  # SigProfilerAssignment pip package (`uv sync --extra signatures`). We do not scrape or
+  # automate the COSMIC website. scripts/download_signatures.py finds, validates and copies
+  # the file into data/raw/signatures/ (gitignored).
+  # NOTE: SigProfilerAssignment 1.1.5 bundles COSMIC v3.4, v3.5 and v3.6, and its Analyzer
+  # defaults to cosmic_version=3.6. Phase 2 must pass cosmic_version=3.4, exome=True,
+  # genome_build="GRCh38" explicitly, or supply this file as signature_database.
+  source: SigProfilerAssignment
+  package_version: "1.1.5"
+  cosmic_version: "3.4"
+  type: SBS
+  context: 96
+  genome_build: GRCh38
+  # TCGA MAFs are whole-exome (WXS), so we use the exome-adjusted matrix (signatures rescaled
+  # for exome trinucleotide frequencies). The whole-genome file in the same package is
+  # COSMIC_v3.4_SBS_GRCh38.txt (sha256 c93fa5b0f857ef56d81b753a9543e2fa250a6df04841b20e3f88f575a9dea9e2).
+  assay: exome
+  package_path: data/Reference_Signatures/GRCh38   # inside the SigProfilerAssignment package
+  file: COSMIC_v3.4_SBS_GRCh38_exome.txt
+  sha256: 37470ce728020466b4a34f299f016bd937f5436a2e5736b3c6342536e3a92fe9
+  # Bundled file: 96 rows (index column "Type") x 86 signatures (SBS1 ... SBS99). Rows are in
+  # lexicographic order (A[C>A]A, A[C>A]C, ..., A[C>G]A, ...), NOT the grouped COSMIC order,
+  # so always reindex to fingerprints.profile.SBS96_CHANNELS before fitting.
+  citation:
+    - >-
+      Alexandrov LB, Kim J, Haradhvala NJ, et al. The repertoire of mutational signatures
+      in human cancer. Nature 578, 94-101 (2020). doi:10.1038/s41586-020-1943-3
+    - >-
+      Sondka Z, Dhir NB, Carvalho-Silva D, et al. COSMIC: a curated database of somatic
+      variants and clinical data for cancer. Nucleic Acids Res 52, D1210-D1217 (2024).
+      doi:10.1093/nar/gkad986. COSMIC Mutational Signatures, https://cancer.sanger.ac.uk/signatures/
+    - >-
+      Diaz-Gay M, Vangara R, Barnes M, et al. Assigning mutational signatures to individual
+      samples and individual somatic mutations with SigProfilerAssignment. Bioinformatics 39,
+      btad756 (2023). doi:10.1093/bioinformatics/btad756
+  licence:
+    terms_url: https://www.cosmickb.org/terms/
+    checked: "2026-11-22"
+    summary: >-
+      COSMIC data are free for internal research by academic / not-for-profit users.
+      Commercial use needs a QIAGEN commercial licence. Redistribution to third parties is
+      prohibited without written consent from Genome Research Ltd, except as needed to
+      publish scientific papers. COSMIC data may not be exposed on a free-to-access platform,
+      and may not be used to train AI models without written consent. Publications must
+      acknowledge COSMIC and give the release version. These terms still apply to the copy
+      bundled in SigProfilerAssignment: the package code licence does not relicense the data.
+    consequences_for_this_repo:
+      - Never commit COSMIC signature files. They live only in data/raw/signatures (gitignored).
+      - Each user obtains the matrix by installing SigProfilerAssignment locally.
+      - Cite COSMIC v3.4 and Alexandrov et al. 2020 in the README and on figures.
+
+profile:
+  # Same-sample SNVs at adjacent positions (likely doublets/MNVs reported as separate SNPs).
+  #   exclude      - leave them out of SBS96 (default; conservative, SBS and DBS kept separate)
+  #   count_as_sbs - count them as ordinary SBS, as SigProfilerMatrixGenerator 1.6.0 does
+  # Read by `fingerprints profile` (--config, default config/config.yaml); the
+  # --adjacent-snvs flag overrides it. Missing file or key -> exclude.
+  # Event counts (dbs_events / mnv_events) are reported in both modes. See docs/decisions.md D5.
+  adjacent_snvs: exclude
+
+fitting:
+  # Tumours with fewer SNVs than this are skipped, and the skipped count is reported.
+  min_snvs: 50
+  # Sensitivity check: re-run with these thresholds and report (docs/decisions.md D7).
+  min_snvs_sensitivity: [20, 100]
+  # Signatures COSMIC v3.4 lists as possible sequencing artefacts. Taken from the
+  # "Artifact_signatures" SBS subgroup in SigProfilerAssignment 1.1.5 (decomposition.py),
+  # which follows the COSMIC artefact annotations.
+  exclude_artefacts: [SBS27, SBS43, SBS45, SBS46, SBS47, SBS48, SBS49, SBS50, SBS51, SBS52,
+                      SBS53, SBS54, SBS55, SBS56, SBS57, SBS58, SBS59, SBS60, SBS95]
+  # The bioinformatician defines cancer-type-relevant signature subsets in Phase 2, and
+  # Prithviraj reviews them. Left empty on purpose.
+  signature_subsets: {}

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "hits": [
+      {"file_id": "msi-file-1", "experimental_strategy": "WXS", "msi_status": "MSI", "msi_score": 0.41,
+       "associated_entities": [{"entity_submitter_id": "TCGA-YY-0101-01A-11D-A000-10", "entity_type": "aliquot"}],
+       "cases": [{"case_id": "case-0101", "submitter_id": "TCGA-YY-0101",
+                  "project": {"project_id": "TCGA-COAD"},
+                  "samples": [{"submitter_id": "TCGA-YY-0101-01A", "sample_type": "Primary Tumor"}]}]},
+      {"file_id": "msi-file-2", "experimental_strategy": "WGS", "msi_status": "MSS", "msi_score": 0.03,
+       "associated_entities": [{"entity_submitter_id": "TCGA-YY-0102-06A-11D-A000-10", "entity_type": "aliquot"}],
+       "cases": [{"case_id": "case-0102", "submitter_id": "TCGA-YY-0102",
+                  "project": {"project_id": "TCGA-COAD"},
+                  "samples": [{"submitter_id": "TCGA-YY-0102-06A", "sample_type": "Metastatic"}]}]}
+    ],
+    "pagination": {"count": 2, "total": 2, "size": 500, "from": 0, "page": 1, "pages": 1}
+  },
+  "warnings": {}
+}
