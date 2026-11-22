@@ -46,6 +46,7 @@ EXPECTED_CELLS = {
         "T[C>G]A": 1,  # G>C in TGA -> TCA
         "A[C>T]G": 2,  # same locus as an S1 mutation (other sample) + chr22:201
         "T[T>C]G": 1,  # chr19:502 A>G (CAA -> TTG), next to S1 chr19:501, other sample
+        "C[C>T]G": 1,  # chrX:301, next to the multiallelic chrX:300: kept
     },
     S3: {},  # indels only
 }
@@ -62,19 +63,20 @@ EXPECTED_DROPS = {
         "dbs_events": 1,
     },
     S2: {
-        "kept": 8,
         "not_snp": 1,
         "missing_context": 1,
         "non_acgt": 1,
         "no_alt": 1,
         "context_mismatch": 1,  # chr22:200; its neighbour chr22:201 is kept
         "adjacent_snv_dbs": 3,  # chr21:100-102
-        "total": 16,
+        "multiallelic_position": 2,  # chrX:300 C>T + C>A
+        "kept": 9,
+        "total": 19,
         "mnv_events": 1,
     },
     S3: {"kept": 0, "not_snp": 2, "total": 2},
 }
-N_FIXTURE_ROWS = 31
+N_FIXTURE_ROWS = 34
 
 
 def _minimal_maf(rows: list[tuple[str, str, str, str]]) -> pd.DataFrame:
@@ -264,56 +266,89 @@ def _snvs_alt(rows: list[tuple[str, str, int, str]]) -> pd.DataFrame:
 
 
 @pytest.mark.parametrize("mode", ["exclude", "count_as_sbs"])
-def test_multiallelic_site_next_to_snv_joins_run_any_order(mode):
-    """42 C>T, 43 C>T, 43 C>A: one DBS event over 2 positions, all 3 rows in it."""
+def test_multiallelic_position_next_to_snv_any_order(mode):
+    """42 C>T, 43 C>T, 43 C>A: 43a/43b dropped as multiallelic; 42 kept as SBS."""
     rows = [("X", "chr1", 42, "T"), ("X", "chr1", 43, "T"), ("X", "chr1", 43, "A")]
     results = []
     for order in ([0, 1, 2], [2, 1, 0], [1, 2, 0]):
         maf = _snvs_alt([rows[i] for i in order])
         ann = annotate_sbs96(maf, adjacent_snvs=mode)
-        assert ann["adjacent_run_len"].tolist() == [2, 2, 2]
-        assert ann["adjacent_run_id"].nunique() == 1
-        expected_reason = "adjacent_snv_dbs" if mode == "exclude" else None
-        assert all(r == expected_reason for r in ann["drop_reason"])
+        by_row = {
+            (p, a): r
+            for p, a, r in zip(
+                ann["Start_Position"], ann["Tumor_Seq_Allele2"], ann["drop_reason"], strict=True
+            )
+        }
+        assert by_row == {
+            (42, "T"): None,
+            (43, "T"): "multiallelic_position",
+            (43, "A"): "multiallelic_position",
+        }
+        assert ann["adjacent_run_id"].isna().all()
         matrix, dropped = build_sbs96_matrix(maf, return_dropped=True, adjacent_snvs=mode)
-        assert dropped.loc["X", "dbs_events"] == 1
+        assert dropped.loc["X", "multiallelic_position"] == 2
+        assert dropped.loc["X", "kept"] == 1
+        assert dropped.loc["X", "dbs_events"] == 0
         assert dropped.loc["X", "mnv_events"] == 0
+        assert matrix.loc["A[C>T]A", "X"] == 1
+        assert int(matrix["X"].sum()) == 1
         results.append((matrix, dropped))
     for matrix, dropped in results[1:]:
         pd.testing.assert_frame_equal(matrix, results[0][0])
         pd.testing.assert_frame_equal(dropped, results[0][1])
-    if mode == "exclude":
-        assert int(results[0][0]["X"].sum()) == 0
-    else:
-        assert int(results[0][0]["X"].sum()) == 3
-        assert results[0][0].loc["A[C>T]A", "X"] == 2
-        assert results[0][0].loc["A[C>A]A", "X"] == 1
 
 
-def test_multiallelic_then_neighbour_counts_positions():
-    """43 C>T, 43 C>A, 44 C>T: 3 rows, 2 positions -> 1 DBS event (not MNV)."""
+def test_multiallelic_position_then_neighbour():
+    """43 C>T, 43 C>A, 44 C>T: 43a/43b dropped, 44 kept, no DBS event."""
     maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "A"), ("X", "chr1", 44, "T")])
     ann = annotate_sbs96(maf)
-    assert ann["drop_reason"].tolist() == ["adjacent_snv_dbs"] * 3
+    assert ann["drop_reason"].tolist() == ["multiallelic_position", "multiallelic_position", None]
     _, dropped = build_sbs96_matrix(maf, return_dropped=True)
-    assert dropped.loc["X", "adjacent_snv_dbs"] == 3
-    assert dropped.loc["X", "dbs_events"] == 1
-    assert dropped.loc["X", "mnv_events"] == 0
-    # one more neighbour (45) -> 3 distinct positions -> MNV
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 0
+    assert dropped.loc["X", "dbs_events"] == 0
+    # 44/45 still form an ordinary DBS
     maf = pd.concat([maf, _snvs_alt([("X", "chr1", 45, "T")])], ignore_index=True)
     _, dropped = build_sbs96_matrix(maf, return_dropped=True)
-    assert dropped.loc["X", "adjacent_snv_dbs"] == 4
-    assert dropped.loc["X", "dbs_events"] == 0
-    assert dropped.loc["X", "mnv_events"] == 1
+    assert dropped.loc["X", "multiallelic_position"] == 2
+    assert dropped.loc["X", "adjacent_snv_dbs"] == 2
+    assert dropped.loc["X", "dbs_events"] == 1
+    assert dropped.loc["X", "mnv_events"] == 0
 
 
-def test_isolated_multiallelic_site_keeps_both_alts():
-    """Open question for biology review; current behaviour: both kept as SBS."""
+def test_isolated_multiallelic_position_dropped():
     maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "A")])
     ann = annotate_sbs96(maf)
+    assert ann["drop_reason"].tolist() == ["multiallelic_position"] * 2
+    assert ann["sbs96_channel"].isna().all()
+
+
+def test_three_alts_at_one_position_all_dropped():
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "A"), ("X", "chr1", 43, "G")])
+    _, dropped = build_sbs96_matrix(maf, return_dropped=True)
+    assert dropped.loc["X", "multiallelic_position"] == 3
+    assert dropped.loc["X", "kept"] == 0
+
+
+def test_multiallelic_with_exact_duplicate():
+    """43 C>T twice + 43 C>A: one duplicate, then the two distinct alts are multiallelic."""
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "T"), ("X", "chr1", 43, "A")])
+    ann = annotate_sbs96(maf)
+    assert ann["drop_reason"].tolist() == [
+        "multiallelic_position",
+        "duplicate",
+        "multiallelic_position",
+    ]
+
+
+def test_exact_duplicate_alone_is_not_multiallelic():
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("X", "chr1", 43, "T")])
+    assert annotate_sbs96(maf)["drop_reason"].tolist() == [None, "duplicate"]
+
+
+def test_same_position_different_samples_not_multiallelic():
+    maf = _snvs_alt([("X", "chr1", 43, "T"), ("Y", "chr1", 43, "A")])
+    ann = annotate_sbs96(maf)
     assert ann["drop_reason"].isna().all()
-    assert ann["adjacent_run_id"].isna().all()
-    assert ann["sbs96_channel"].tolist() == ["A[C>T]A", "A[C>A]A"]
 
 
 def test_whitespace_in_sample_and_chrom_normalised():
@@ -322,6 +357,7 @@ def test_whitespace_in_sample_and_chrom_normalised():
     # " S1 "/" chr1" is the same sample/chrom: 100 & 101 adjacent; 3rd row is a duplicate
     assert ann["drop_reason"].tolist() == ["adjacent_snv_dbs", "adjacent_snv_dbs", "duplicate"]
     assert ann["Tumor_Sample_Barcode"].tolist() == ["S1", "S1", "S1"]
+    assert ann["Chromosome"].tolist() == ["chr1", "chr1", "chr1"]
     matrix, dropped = build_sbs96_matrix(maf, return_dropped=True)
     assert list(matrix.columns) == ["S1"]
     assert dropped.loc["S1", "total"] == 3
@@ -442,7 +478,7 @@ def test_full_fixture_matrix_exact():
             expected.loc[ch, sample] = n
     pd.testing.assert_frame_equal(matrix, expected, check_names=False)
 
-    assert matrix.sum().to_dict() == {S1: 7, S2: 8, S3: 0}
+    assert matrix.sum().to_dict() == {S1: 7, S2: 9, S3: 0}
     assert (matrix[S3] == 0).all()  # indel-only sample still present
 
 
@@ -478,10 +514,10 @@ def test_count_as_sbs_full_fixture_exact():
         for ch, n in sample_cells.items():
             expected.loc[ch, sample] = n
     pd.testing.assert_frame_equal(matrix, expected, check_names=False)
-    assert matrix.sum().to_dict() == {S1: 9, S2: 11, S3: 0}
+    assert matrix.sum().to_dict() == {S1: 9, S2: 12, S3: 0}
 
     assert (dropped["adjacent_snv_dbs"] == 0).all()
-    assert dropped["kept"].to_dict() == {S1: 9, S2: 11, S3: 0}
+    assert dropped["kept"].to_dict() == {S1: 9, S2: 12, S3: 0}
     assert int(dropped["total"].sum()) == N_FIXTURE_ROWS
     # Event counts identical to the default (exclude) mode.
     _, dropped_excl = build_sbs96_matrix(FIXTURE, return_dropped=True)
@@ -539,7 +575,8 @@ def test_drop_summary_is_logged(caplog):
     with caplog.at_level("INFO", logger="fingerprints.profile"):
         build_sbs96_matrix(FIXTURE)
     msg = " ".join(r.getMessage() for r in caplog.records)
-    assert "15 SNVs kept" in msg
+    assert "16 SNVs kept" in msg
+    assert "multiallelic_position=2" in msg
     assert "tri_allelic=1" in msg and "adjacent_snv_dbs=5" in msg
     assert "1 DBS (2 rows), 1 MNV (3+ rows)" in msg
     assert "not_snp=4" in msg and "duplicate=1" in msg

@@ -31,17 +31,27 @@ class ConfigError(ValueError):
     """A config file exists but holds an unusable value."""
 
 
-def _resolve_adjacent_snvs(flag: str | None, config_path: Path) -> str:
-    """Pick the adjacent-SNV mode: explicit flag > config file > default.
+def _resolve_adjacent_snvs(flag: str | None, config_arg: Path | None) -> tuple[str, str]:
+    """Pick the adjacent-SNV mode and say where it came from.
 
-    The config is read only when the flag is not given. A missing config file,
-    or one without ``profile.adjacent_snvs``, falls back to the default
-    ("exclude"). An unparsable file or an invalid value raises ConfigError.
+    Precedence: explicit ``--adjacent-snvs`` > ``profile.adjacent_snvs`` in the
+    config > default ("exclude"). Returns ``(mode, source)``, where ``source``
+    is a short human-readable description for the log line.
+
+    ``config_arg`` is ``None`` when ``--config`` was not given. Then the default
+    ``config/config.yaml`` is used if it exists, and a missing default file is
+    fine. An explicitly given ``--config`` that does not exist is an error
+    (ConfigError), even if ``--adjacent-snvs`` is also given. An unparsable file
+    or an invalid value is also a ConfigError.
     """
+    explicit = config_arg is not None
+    config_path = config_arg if explicit else DEFAULT_CONFIG
+    if explicit and not config_path.is_file():
+        raise ConfigError(f"config file not found: {config_path}")
     if flag is not None:
-        return flag
+        return flag, "from --adjacent-snvs"
     if not config_path.is_file():
-        return DEFAULT_ADJACENT_SNVS
+        return DEFAULT_ADJACENT_SNVS, "default; no config found"
 
     import yaml  # lazy: keeps --help fast and independent of optional imports
 
@@ -53,19 +63,17 @@ def _resolve_adjacent_snvs(flag: str | None, config_path: Path) -> str:
     if not isinstance(config, dict):
         raise ConfigError(f"config {config_path} is not a YAML mapping")
     section = config.get("profile")
-    if section is None:
-        return DEFAULT_ADJACENT_SNVS
-    if not isinstance(section, dict):
+    if section is not None and not isinstance(section, dict):
         raise ConfigError(f"config {config_path}: 'profile' must be a mapping")
-    value = section.get("adjacent_snvs")
+    value = (section or {}).get("adjacent_snvs")
     if value is None:
-        return DEFAULT_ADJACENT_SNVS
+        return DEFAULT_ADJACENT_SNVS, f"default; not set in config {config_path}"
     if value not in ADJACENT_SNV_CHOICES:
         raise ConfigError(
             f"config {config_path}: profile.adjacent_snvs must be one of "
             f"{list(ADJACENT_SNV_CHOICES)}, got {value!r}"
         )
-    return value
+    return value, f"from config {config_path}"
 
 
 def _error(message: str) -> int:
@@ -81,7 +89,7 @@ def _cmd_profile(args: argparse.Namespace) -> int:
         return _error(f"MAF file not found: {args.maf}")
 
     try:
-        adjacent_snvs = _resolve_adjacent_snvs(args.adjacent_snvs, args.config)
+        adjacent_snvs, source = _resolve_adjacent_snvs(args.adjacent_snvs, args.config)
     except ConfigError as exc:
         return _error(str(exc))
 
@@ -101,6 +109,7 @@ def _cmd_profile(args: argparse.Namespace) -> int:
         f"Wrote {matrix.shape[0]} channels x {matrix.shape[1]} samples to {args.output}",
         file=sys.stderr,
     )
+    print(f"adjacent_snvs={adjacent_snvs} ({source})", file=sys.stderr)
     return EXIT_OK
 
 
@@ -146,10 +155,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_profile.add_argument(
         "--config",
         type=Path,
-        default=DEFAULT_CONFIG,
+        default=None,  # None = not given: use DEFAULT_CONFIG if it exists
         help=(
             f"Project config YAML (default: {DEFAULT_CONFIG}, relative to the current "
-            "directory). Only profile.adjacent_snvs is read; a missing file is fine."
+            "directory; skipped if absent). Only profile.adjacent_snvs is read. A file "
+            "given explicitly must exist."
         ),
     )
     p_profile.set_defaults(func=_cmd_profile)

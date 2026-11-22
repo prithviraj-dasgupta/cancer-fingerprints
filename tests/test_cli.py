@@ -140,42 +140,63 @@ def _write_config(path, adjacent_snvs):
     return path
 
 
-def test_config_sets_adjacent_snvs(tmp_path, maf, fake_profile):
+def test_config_sets_adjacent_snvs(tmp_path, maf, fake_profile, capsys):
     cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
     out = tmp_path / "sbs96.tsv"
     assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
     assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+    assert f"adjacent_snvs=count_as_sbs (from config {cfg})" in capsys.readouterr().err
 
 
-def test_flag_overrides_config(tmp_path, maf, fake_profile):
+def test_flag_overrides_config(tmp_path, maf, fake_profile, capsys):
     cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
     out = tmp_path / "sbs96.tsv"
     argv = ["profile", str(maf), "-o", str(out), "--config", str(cfg), "--adjacent-snvs", "exclude"]
     assert cli.main(argv) == 0
     assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+    assert "adjacent_snvs=exclude (from --adjacent-snvs)" in capsys.readouterr().err
 
 
-def test_missing_config_falls_back_to_exclude(tmp_path, maf, fake_profile):
+@pytest.mark.parametrize("with_flag", [False, True])
+def test_explicit_missing_config_is_error(tmp_path, maf, fake_profile, capsys, with_flag):
+    missing = tmp_path / "nope.yaml"
     out = tmp_path / "sbs96.tsv"
-    argv = ["profile", str(maf), "-o", str(out), "--config", str(tmp_path / "nope.yaml")]
-    assert cli.main(argv) == 0
+    argv = ["profile", str(maf), "-o", str(out), "--config", str(missing)]
+    if with_flag:
+        argv += ["--adjacent-snvs", "exclude"]
+    assert cli.main(argv) == 1
+    assert capsys.readouterr().err == f"error: config file not found: {missing}\n"
+    assert fake_profile.calls == []
+    assert not out.exists()
+
+
+def test_missing_default_config_falls_back_to_exclude(
+    tmp_path, maf, fake_profile, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)  # no config/config.yaml here
+    out = tmp_path / "sbs96.tsv"
+    assert cli.main(["profile", str(maf), "-o", str(out)]) == 0
     assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+    assert "adjacent_snvs=exclude (default; no config found)" in capsys.readouterr().err
 
 
-def test_config_without_key_falls_back_to_exclude(tmp_path, maf, fake_profile):
+def test_config_without_key_falls_back_to_exclude(tmp_path, maf, fake_profile, capsys):
     cfg = tmp_path / "config.yaml"
     cfg.write_text("genome_build: GRCh38\nfitting:\n  min_snvs: 50\n", encoding="utf-8")
     out = tmp_path / "sbs96.tsv"
     assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
     assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
+    assert f"adjacent_snvs=exclude (default; not set in config {cfg})" in capsys.readouterr().err
 
 
-def test_default_config_path_is_cwd_relative(tmp_path, maf, fake_profile, monkeypatch):
+def test_default_config_path_is_cwd_relative(tmp_path, maf, fake_profile, monkeypatch, capsys):
     (tmp_path / "config").mkdir()
     _write_config(tmp_path / "config" / "config.yaml", "count_as_sbs")
     monkeypatch.chdir(tmp_path)
     assert cli.main(["profile", str(maf), "-o", str(tmp_path / "sbs96.tsv")]) == 0
     assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+    err = capsys.readouterr().err
+    assert "adjacent_snvs=count_as_sbs (from config config/config.yaml)" in err
 
 
 @pytest.mark.parametrize("content", ["profile:\n  adjacent_snvs: merge\n", "profile: [1, 2\n"])

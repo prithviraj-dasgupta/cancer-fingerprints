@@ -71,14 +71,23 @@ Only rows that passed every other check, *after* de-duplication, are
 considered. So an exact duplicate (same position) can never look like a
 neighbour, and a row dropped for another reason (e.g. ``context_mismatch``)
 does not turn its valid neighbour into a doublet. Runs are found over distinct
-positions: if one position carries two different kept alts (a multi-allelic
-site) and is next to another kept SNV, every row at those positions belongs
-to the run, and the run length counts positions, not rows. An *isolated*
-multi-allelic site (no neighbour) keeps both alts as SBS. How such sites should
-be treated is a known open question for biology review. GDC already reports
+positions, and run length counts positions, not rows. GDC already reports
 caller-merged doublets as ``Variant_Type == "DNP"`` rows, which are dropped as
 ``not_snp`` and not counted as events. This rule only concerns pairs reported
 as two separate SNP rows.
+
+Multi-allelic positions
+-----------------------
+If one sample has two or more *different* alt alleles at the same chromosome
+and position, all rows at that position are dropped as
+``multiallelic_position`` (project decision: these are more likely artefacts
+than real events). This is checked among rows that passed every other check,
+after de-duplication, so an exact repeat of a single variant is still just a
+``duplicate``. It is checked before adjacency, so these rows never join a
+doublet run. Because dropped rows never make a neighbour adjacent, a valid SNV
+next to a multi-allelic position is kept as SBS. The behaviour is the same in
+both ``adjacent_snvs`` modes. The same position in *different* samples is not
+multi-allelic.
 
 Future hook (not built in v1)
 -----------------------------
@@ -152,6 +161,7 @@ DROP_REASONS: list[str] = [
     "context_mismatch",  # centre base of CONTEXT != Reference_Allele
     "missing_position",  # Start_Position missing/non-numeric (cannot dedupe safely)
     "duplicate",  # same sample / chrom / position / ref / alt seen earlier
+    "multiallelic_position",  # >= 2 different alts at one sample / chrom / position
     "adjacent_snv_dbs",  # in a run of >= 2 adjacent same-sample SNVs (adjacent_snvs="exclude")
 ]
 
@@ -314,9 +324,11 @@ def annotate_sbs96(
     Raises ``ValueError`` if required columns (including ``CONTEXT``) are
     missing, or if any row has a missing/empty sample ID: such rows could not be
     attributed to a sample, so they are rejected loudly rather than dropped.
-    Sample IDs and chromosome names are whitespace-stripped before use, so the
-    returned ``sample_col`` holds the stripped IDs (``" S1"`` and ``"S1"`` are
-    one sample). If a ``Strand`` column is present, rows whose value is not ``+`` (including
+    Sample IDs and chromosome names are whitespace-stripped before use, and the
+    stripped values are written back into the returned ``sample_col`` and
+    ``Chromosome`` columns (``" S1"`` and ``"S1"`` are one sample).
+
+    If a ``Strand`` column is present, rows whose value is not ``+`` (including
     empty) are dropped as ``non_plus_strand``, because ``CONTEXT`` is assumed
     to be plus-strand sequence.
     """
@@ -350,6 +362,7 @@ def annotate_sbs96(
     out[sample_col] = sample
     chrom = out["Chromosome"].astype(object).where(out["Chromosome"].notna(), "")
     chrom = chrom.astype(str).str.strip()
+    out["Chromosome"] = chrom
 
     ref = _clean(out["Reference_Allele"])
     a1 = _clean(out["Tumor_Seq_Allele1"])
@@ -402,12 +415,19 @@ def annotate_sbs96(
     reason[dup] = "duplicate"
     kept = reason.isna()
 
+    # Multi-allelic positions: >= 2 different alts among kept rows at one
+    # sample/chrom/pos -> drop every row there (see module docstring).
+    n_alts = key[kept].groupby(["s", "c", "p"])["a"].transform("nunique")
+    multi = n_alts[n_alts > 1].index
+    reason[multi] = "multiallelic_position"
+    kept = reason.isna()
+
     # Adjacent SNVs -> doublets / MNVs (see module docstring). Only rows still
     # kept after every check and dedupe take part, so dropped rows and exact
     # duplicates never create adjacency.
-    # Runs are detected over DISTINCT (sample, chrom, pos) among kept rows, so a
-    # multi-allelic site (two kept alts at one position) neither breaks a run
-    # nor escapes it; run length = number of distinct positions.
+    # Runs are detected over DISTINCT (sample, chrom, pos) among kept rows;
+    # run length = number of distinct positions. (Multi-allelic positions were
+    # dropped above, so in practice each position has one kept row.)
     run_id = pd.Series(pd.NA, index=out.index, dtype="Int64")
     run_len = pd.Series(pd.NA, index=out.index, dtype="Int64")
     k = key.loc[kept, ["s", "c", "p"]]
