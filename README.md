@@ -33,9 +33,14 @@ uv run pytest -m "not network"   # what CI runs (no internet, no genome referenc
 
 ## Method in one line
 
-Each tumour's 96-channel SBS profile is decomposed into COSMIC reference signatures by
-**non-negative least squares (NNLS) signature refitting**, using SigProfilerAssignment. This is
-refitting to a published reference, not a machine-learning model trained on COSMIC data.
+Each tumour's 96-channel SBS profile is decomposed into a cohort-specific subset of COSMIC
+reference signatures by **non-negative least squares (NNLS) signature refitting**
+(`scipy.optimize.nnls`; no sparsity penalty). SigProfilerAssignment supplies only the bundled
+COSMIC v3.4 reference file and an optional cross-check. This is refitting to a published
+reference, not a machine-learning model trained on COSMIC data.
+
+Exposures are NNLS-attributed mutation counts. Their sum can differ from the observed SNV count
+when the fit is poor, so the per-tumour reconstruction cosine is reported with every result.
 
 ## Demo (local only)
 

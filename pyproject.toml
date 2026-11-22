@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Prithviraj Dasgupta" }]
 dependencies = [
+    "matplotlib>=3.8",
     "numpy>=1.26",
     "pandas>=2.1",
     "pyyaml>=6.0",
     "requests>=2.31",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]

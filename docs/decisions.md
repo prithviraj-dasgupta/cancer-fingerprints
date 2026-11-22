@@ -167,6 +167,25 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
 7. **Prevalences** are figure estimates. Label them approximate and cite the figure (ED Fig. 5).
 - Final subsets: LUAD and LUSC: SBS1, 2, 4, 5, 13, 18. SKCM: SBS1, 5, 7a–d, 38. COAD and READ
   (shared): SBS1, 5, 40a, 44, 6, 15, 26, 14, 20, 10a, 10b, 28, 18.
+- **Fitting method (2026-11-22):** direct unpenalised NNLS (`scipy.optimize.nnls`) on exactly
+  the approved subset, not SigProfilerAssignment's `cosmic_fit`.
+  - `cosmic_fit` applies its own forward/backward signature selection, which can add or drop
+    SBS4, SBS7 or MMR signatures and would confound the validations (it zeroed SBS18 in all 25
+    tested LUAD tumours).
+  - A cross-check on 30 LUAD tumours: per-tumour exposure correlation SBS4 0.98, SBS13 0.94,
+    SBS2 0.86, SBS5 0.64, SBS1 0.60.
+  - Overlapping weak signatures (SBS1/SBS5/SBS40a, SBS18, SBS6) can trade exposure, so
+    validation uses grouped or summed exposures.
+- **Validation specification (fixed before any result was seen):**
+  - Report the per-tumour reconstruction cosine alongside every result. As a sensitivity
+    analysis, rerun with tumours below cosine 0.8 excluded. This is a quality filter and never
+    uses smoking or MSI status.
+  - Melanoma: the primary measure is the summed fraction of SBS7a–d. Secondary: SBS7a+b only,
+    and SBS7a–d + SBS38.
+  - Lung: SBS4 fraction.
+  - Colorectal: summed MMR fraction (SBS6+14+15+20+26+44).
+  - Exposures are NNLS-attributed counts and can differ from observed SNV counts when the fit is
+    poor.
 - Phase 2 sensitivity checks (all reported): SBS18 with/without (lung smoker vs never-smoker);
   `min_snvs` 20 and 100; `adjacent_snvs: count_as_sbs` (melanoma SBS7, D5); MSI scores
   0.15–0.25 excluded (D4).
