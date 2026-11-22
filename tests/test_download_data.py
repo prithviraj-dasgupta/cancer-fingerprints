@@ -481,3 +481,10 @@ def test_live_gdc_filters_return_hits():
     assert rows[0].file_name.endswith(".maf.gz") and rows[0].case_submitter_id.startswith("TCGA-")
     msi = dd.fetch_msi(client, "TCGA-READ")
     assert {r["msi_status"] for r in msi} <= {"MSI", "MSS"} and len(msi) > 100
+
+
+def test_flatten_case_gender_falls_back_to_sex_at_birth():
+    flat = dd.flatten_case({"case_id": "c", "demographic": {"sex_at_birth": "female"}})
+    assert flat["gender"] == "female"
+    flat = dd.flatten_case({"case_id": "c", "demographic": {"gender": "male", "sex_at_birth": "x"}})
+    assert flat["gender"] == "male"

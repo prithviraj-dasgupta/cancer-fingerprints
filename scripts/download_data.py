@@ -378,7 +378,8 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
         "project": project,
         "primary_site": case.get("primary_site", ""),
         "disease_type": case.get("disease_type", ""),
-        "gender": demo.get("gender"),
+        # GDC renamed demographic.gender to sex_at_birth; accept either.
+        "gender": demo.get("gender") or demo.get("sex_at_birth"),
         "race": demo.get("race"),
         "ethnicity": demo.get("ethnicity"),
         "vital_status": demo.get("vital_status"),
