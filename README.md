@@ -42,6 +42,46 @@ reference, not a machine-learning model trained on COSMIC data.
 Exposures are NNLS-attributed mutation counts. Their sum can differ from the observed SNV count
 when the fit is poor, so the per-tumour reconstruction cosine is reported with every result.
 
+## How to reproduce
+
+```bash
+uv sync --extra signatures      # needs the COSMIC reference bundled with SigProfilerAssignment
+bash scripts/run_pipeline.sh    # download -> select samples -> profiles -> fits -> validation
+```
+
+Downloads are open-access GDC masked MAFs (TCGA, GRCh38). Raw data stay in `data/` (gitignored).
+Every table and figure below is written by a script to `results/`; the full generated report is
+[results/validation_summary.md](results/validation_summary.md).
+
+## Results: does the fit recover known biology?
+
+The analyses and settings were fixed before the results were seen (see `docs/decisions.md`, D7).
+Tumours with at least 50 SNVs are analysed; 20 and 100 SNVs and a fit-quality filter are
+sensitivity checks. These results are *consistent with* the expected biology; they do not prove
+the cause of any individual tumour.
+
+| Check | Result (primary setting) |
+|---|---|
+| **Lung (LUAD):** SBS4 (tobacco) in smokers vs lifelong never-smokers | median 0.50 (n=273) vs 0.11 (n=33); AUC 0.82 (95% CI 0.73-0.90), p=2.4e-9 |
+| **Melanoma (SKCM):** summed UV signatures SBS7a-d | median 0.91 of mutations (n=417); the largest component in 94.7% of tumours |
+| **Colorectal (COAD+READ):** summed mismatch-repair signatures, MSI vs MSS | median 0.60 (n=80) vs 0.09 (n=458); AUC 0.97 (95% CI 0.95-0.99) |
+
+Things the numbers do *not* show cleanly (all reported in the full summary):
+
+- **SNV filter and never-smokers.** The 50-SNV filter ignores smoking status but removes about half
+  of LUAD never-smokers (69 chosen, 63 with 20+ SNVs, 33 with 50+, 17 with 100+). The effect size
+  is 0.88 at 20 SNVs and 0.72 at 100. The primary stays at 50, as pre-specified.
+- **SBS4 in never-smokers.** It is not zero: the LUAD never-smoker upper quartile is 0.44 and the
+  maximum 0.67. Reasons (passive smoke, SBS4/SBS5 overlap, misrecorded status) are unresolved.
+- **No dose-response.** SBS4 fraction does not track pack-years in ever-smokers (Spearman rho 0.03 in
+  LUAD, -0.01 in LUSC). LUSC has only 14 never-smokers at 50+ SNVs, so it is descriptive.
+- **Background MMR in MSS tumours.** Median summed MMR is 0.09 in MSS tumours; SBS1 and SBS6 overlap,
+  so part of this is probably signature leakage. READ has only 6 MSI tumours at 50+ SNVs.
+- **Cases without data.** 90 clinical cases (LUAD 26, LUSC 14, COAD 33, READ 17) have no open-access
+  masked MAF at GDC (only controlled-access or germline calls), so they cannot be analysed.
+- **Filters that did nothing.** Tri-allelic and multi-allelic filters removed no mutations in these
+  GDC masked MAFs, which already hold one alternate allele per site. They matter for other inputs.
+
 ## Demo (local only)
 
 The Streamlit demo runs locally only. Under COSMIC's licence terms, COSMIC data may not be

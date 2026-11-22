@@ -1,0 +1,5 @@
+cohort	group	clinical_cases	clinical_borderline	in_fit_table	in_fit_table_borderline	analysed_ge50	analysed_ge50_borderline
+COAD	MSI	75	4	75	4	74	3
+COAD	MSS	353	16	341	10	329	6
+READ	MSI	9	0	7	0	6	0
+READ	MSS	146	1	136	1	129	0

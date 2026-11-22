@@ -1,0 +1,9 @@
+analysis	cohort	comparison	label	setting	min_snvs	min_cosine	group1	group2	n1	n2	median1	iqr1	median2	iqr2	effect_name	effect	ci_low	ci_high	rank_biserial	p	min	max	median_cosine1	median_cosine2	notes
+colorectal_sbs6_leakage	COAD+READ	SBS6 fraction distribution in MSS tumours	descriptive	primary	50		MSS		458		0	0-0			n/a (descriptive)						0	0.487315	0.946946		P90=0.07736, P95=0.1657
+colorectal_sbs6_leakage	COAD+READ	share of MSS tumours with SBS6 > 0	descriptive	primary	50		MSS		458						proportion (Wilson 95% CI)	0.220524	0.184965	0.260732					0.946946		101/458.
+colorectal_sbs6_leakage	COAD+READ	share of MSS tumours with SBS6 > 5%	descriptive	primary	50		MSS		458						proportion (Wilson 95% CI)	0.141921	0.112934	0.176865					0.946946		65/458.
+colorectal_sbs6_leakage	COAD+READ	SBS1 fraction vs SBS6 fraction in MSS tumours	descriptive	primary	50		SBS1	SBS6	458						Spearman rho	-0.304372	-0.377377	-0.221693		2.8412e-11			0.946946		a negative rho is the expected signature of exposure trading between SBS1 and SBS6
+colorectal_sbs6_leakage	COAD+READ	SBS6 fraction distribution in MSI tumours	descriptive	primary	50		MSI		80		0.0901274	0-0.1628			n/a (descriptive)						0	0.359918	0.992797		P90=0.2267, P95=0.2721
+colorectal_sbs6_leakage	COAD+READ	share of MSI tumours with SBS6 > 0	descriptive	primary	50		MSI		80						proportion (Wilson 95% CI)	0.725	0.618559	0.810822					0.992797		58/80.
+colorectal_sbs6_leakage	COAD+READ	share of MSI tumours with SBS6 > 5%	descriptive	primary	50		MSI		80						proportion (Wilson 95% CI)	0.5875	0.47804	0.688941					0.992797		47/80.
+colorectal_sbs6_leakage	COAD+READ	SBS1 fraction vs SBS6 fraction in MSI tumours	descriptive	primary	50		SBS1	SBS6	80						Spearman rho	-0.369482	-0.548643	-0.152963		0.000743721			0.992797		a negative rho is the expected signature of exposure trading between SBS1 and SBS6

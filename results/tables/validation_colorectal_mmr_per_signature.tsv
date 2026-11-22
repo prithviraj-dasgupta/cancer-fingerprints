@@ -1,0 +1,7 @@
+analysis	cohort	comparison	label	setting	min_snvs	min_cosine	group1	group2	n1	n2	median1	iqr1	median2	iqr2	effect_name	effect	ci_low	ci_high	rank_biserial	p	min	max	median_cosine1	median_cosine2	notes
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS6 fraction	descriptive	primary	50		MSI	MSS	80	458	0.0901274	0-0.1628	0	0-0	AUC	0.775628	0.717057	0.831995	0.551255	1.65874e-22			0.992797	0.946946	
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS14 fraction	descriptive	primary	50		MSI	MSS	80	458	0.0212209	0.005904-0.04181	0	0-0.02176	AUC	0.704722	0.648659	0.755107	0.409443	4.92923e-10			0.992797	0.946946	
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS15 fraction	descriptive	primary	50		MSI	MSS	80	458	0.0570942	0-0.1254	0	0-0.05243	AUC	0.691403	0.629337	0.751382	0.382806	2.93268e-09			0.992797	0.946946	
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS20 fraction	descriptive	primary	50		MSI	MSS	80	458	0.057159	0.02378-0.09109	0	0-0	AUC	0.906823	0.864675	0.945241	0.813646	5.21836e-51			0.992797	0.946946	
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS26 fraction	descriptive	primary	50		MSI	MSS	80	458	0.105937	0.05967-0.179	0.00509932	0-0.03967	AUC	0.879394	0.835188	0.920611	0.758788	4.13547e-29			0.992797	0.946946	
+colorectal_mmr_per_signature	COAD+READ	MSI vs MSS: SBS44 fraction	descriptive	primary	50		MSI	MSS	80	458	0.164823	0.09788-0.2425	0	0-0	AUC	0.946807	0.910524	0.979072	0.893614	8.19947e-74			0.992797	0.946946	
