@@ -131,6 +131,66 @@ fitting:
   # which follows the COSMIC artefact annotations.
   exclude_artefacts: [SBS27, SBS43, SBS45, SBS46, SBS47, SBS48, SBS49, SBS50, SBS51, SBS52,
                       SBS53, SBS54, SBS55, SBS56, SBS57, SBS58, SBS59, SBS60, SBS95]
-  # The bioinformatician defines cancer-type-relevant signature subsets in Phase 2, and
-  # Prithviraj reviews them. Left empty on purpose.
-  signature_subsets: {}
+  # Cancer-type signature subsets (COSMIC v3.4 names). Each TCGA project id maps to the list
+  # of signatures to fit. Status: proposed (awaiting Prithviraj sign-off). Do not run fitting
+  # with these until signed off (docs/decisions.md D7).
+  #
+  # Evidence: Alexandrov et al. 2020, Nature 578:94-101, doi:10.1038/s41586-020-1943-3.
+  #   - "ED Fig. 5" = Extended Data Fig. 5: SigProfiler activity per cancer type over PCAWG +
+  #     non-PCAWG samples (exome-dominated for these cohorts: Lung-AdenoCA n=438,
+  #     Lung-SCC n=350, Skin-Melanoma n=809, ColoRect-AdenoCA n=719). The paper has no
+  #     TCGA-only per-type figure.
+  #   - "Fig. 3" = PCAWG whole genomes only; used as a cross-check.
+  #   - "ED Fig. 6a" = signature co-activity network (POLE, MSI, UV, smoking clusters).
+  #   - Prevalence (% of tumours with the signature) was read from ED Fig. 5 dot sizes
+  #     against its legend, so it is approximate (+/- one 10% legend step).
+  # Aetiology text: COSMIC SBS v3.4 signature descriptions (cancer.sanger.ac.uk/signatures),
+  #   except where the paper itself states it (SBS4 tobacco, SBS7a-d UV, SBS2/13 APOBEC,
+  #   SBS44 and the MMR set, SBS38 "additional effects of UV", SBS40 flat/similar to SBS5).
+  #   Prevalence and cohort activity: Alexandrov 2020 figures as below.
+  # Rule: "core" = in roughly >=20% of that cohort, so included. "Minor" = fewer; excluded
+  # unless a reason is given on the line. MMR/POLE signatures may also be included because
+  # the paper's text names them as a group, not only for their prevalence.
+  # SBS40 (v3.0) was split in v3.4. We map it to SBS40a, the closest v3.4 signature to v3.0
+  # SBS40 (cosine 0.91 genome / 0.88 exome; SBS40b 0.88 / 0.88; SBS40c 0.86 / 0.85).
+  signature_subsets_status: proposed (awaiting Prithviraj sign-off)
+  signature_subsets:
+    TCGA-LUAD:
+      - SBS1     # core (~85%): deamination of 5-methylcytosine, clock-like (ED Fig. 5, Lung-AdenoCA)
+      - SBS2     # core (~65%): APOBEC cytidine deaminase activity (ED Fig. 5, Lung-AdenoCA)
+      - SBS4     # core (~75%): tobacco smoking (ED Fig. 5, Fig. 3, Lung-AdenoCA)
+      - SBS5     # core (~95%): unknown aetiology, clock-like (ED Fig. 5, Lung-AdenoCA)
+      - SBS13    # core (~65%): APOBEC cytidine deaminase activity (ED Fig. 5, Lung-AdenoCA)
+      - SBS18    # minor (~5%, ED Fig. 5), kept to absorb non-tobacco C>A so never-smokers don't get false SBS4 (cos 0.69); proposed ROS damage (COSMIC)
+    TCGA-LUSC:
+      - SBS1     # core (~75%): deamination of 5-methylcytosine, clock-like (ED Fig. 5, Lung-SCC)
+      - SBS2     # core (~75%): APOBEC cytidine deaminase activity (ED Fig. 5, Lung-SCC)
+      - SBS4     # core (~65%): tobacco smoking (ED Fig. 5, Fig. 3, Lung-SCC)
+      - SBS5     # core (~95%): unknown aetiology, clock-like (ED Fig. 5, Lung-SCC)
+      - SBS13    # core (~75%): APOBEC cytidine deaminase activity (ED Fig. 5, Lung-SCC)
+      - SBS18    # minor (~5%, ED Fig. 5), kept to absorb non-tobacco C>A so never-smokers don't get false SBS4 (cos 0.69); proposed ROS damage (COSMIC)
+    TCGA-SKCM:
+      - SBS1     # core (~75%): deamination of 5-methylcytosine, clock-like (ED Fig. 5, Skin-Melanoma)
+      - SBS5     # core (~95%): unknown aetiology, clock-like (ED Fig. 5, Skin-Melanoma)
+      - SBS7a    # core (~95%): UV light exposure (ED Fig. 5, Fig. 3, Skin-Melanoma)
+      - SBS7b    # core (~95%): UV light exposure (ED Fig. 5, Fig. 3, Skin-Melanoma)
+      - SBS7c    # core (~75%): UV light exposure (ED Fig. 5, Skin-Melanoma)
+      - SBS7d    # core (~85%): UV light exposure (ED Fig. 5, Skin-Melanoma)
+      - SBS38    # minor (~15%), kept: proposed "additional effects of exposure to UV light" (main text; ED Fig. 5, Fig. 3)
+    # COAD and READ share one colorectal subset (YAML anchor). MMR set per the paper's text,
+    # "SBS6, SBS14, SBS15, SBS20, SBS21, SBS26 and/or SBS44", plus POLE (ED Fig. 6a).
+    TCGA-COAD: &colorectal
+      - SBS1     # core (~95%): deamination of 5-methylcytosine, clock-like (ED Fig. 5, ColoRect-AdenoCA)
+      - SBS5     # core (~95%): unknown aetiology, clock-like (ED Fig. 5, ColoRect-AdenoCA)
+      - SBS40a   # core (~35%, as v3.0 SBS40): unknown aetiology, flat, similar to SBS5 (ED Fig. 5)
+      - SBS44    # core (~25%): defective DNA mismatch repair (ED Fig. 5, ED Fig. 6a)
+      - SBS6     # minor (~5%), MMR: defective DNA mismatch repair (ED Fig. 5, ED Fig. 6a)
+      - SBS15    # minor (~15%), MMR: defective DNA mismatch repair (ED Fig. 5)
+      - SBS21    # minor (~5%), MMR: defective DNA mismatch repair (ED Fig. 5)
+      - SBS26    # minor (~5%), MMR: defective DNA mismatch repair (ED Fig. 5)
+      - SBS14    # minor (not seen in ColoRect in ED Fig. 5), MMR+POLE/POLD1 group named in main text; POLE + MMR deficiency (COSMIC)
+      - SBS20    # minor (~5%), MMR+POLE/POLD1 group named in main text (ED Fig. 5); POLD1 + MMR deficiency (COSMIC)
+      - SBS10a   # minor (~10-15%, high burden), POLE: polymerase epsilon exonuclease mutation (COSMIC; activity ED Fig. 5, Fig. 3)
+      - SBS10b   # minor (~10-15%, high burden), POLE: polymerase epsilon exonuclease mutation (COSMIC; activity ED Fig. 5, Fig. 3)
+      - SBS28    # minor (~5%, high burden): unknown aetiology; co-active with SBS10a/b in POLE cluster (ED Fig. 6a)
+    TCGA-READ: *colorectal
