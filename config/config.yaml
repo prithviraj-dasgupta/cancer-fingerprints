@@ -115,6 +115,8 @@ signatures:
 fitting:
   # Tumours with fewer SNVs than this are skipped, and the skipped count is reported.
   min_snvs: 50
+  # Sensitivity check: re-run with these thresholds and report (docs/decisions.md D7).
+  min_snvs_sensitivity: [20, 100]
   # Signatures COSMIC v3.4 lists as possible sequencing artefacts. Taken from the
   # "Artifact_signatures" SBS subgroup in SigProfilerAssignment 1.1.5 (decomposition.py),
   # which follows the COSMIC artefact annotations.
