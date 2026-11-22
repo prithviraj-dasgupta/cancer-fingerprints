@@ -405,9 +405,10 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
 def parse_msi_hits(response: dict[str, Any], project: str) -> list[dict[str, Any]]:
     """Turn a GDC /files response (MSI query) into one row per file.
 
-    GDC labels files "MSI" or "MSS". The ~0.2 score boundary is an observation from the data
-    (2026-11-22: lowest MSI score 0.209, highest MSS score 0.1995 in COAD/READ), not a
-    threshold documented by GDC. A case can have several rows (WXS and WGS BAMs), and these
+    GDC labels files "MSI" or "MSS" using MSIsensor2 (tumour BAM only) with a documented MSI
+    score cutoff of 20% (GDC DNA-Seq pipeline docs, "Microsatellite Instability Detection";
+    see docs/decisions.md D4). The data agree (2026-11-22: lowest MSI score 0.209, highest MSS
+    score 0.1995 in COAD/READ). A case can have several rows (WXS and WGS BAMs), and these
     can disagree. All rows are kept; choosing between them is a Phase 2 decision.
 
     On the /files endpoint, ``cases.samples`` and ``associated_entities`` hold only the

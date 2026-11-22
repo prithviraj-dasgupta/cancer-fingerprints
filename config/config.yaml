@@ -16,8 +16,8 @@ paths:
 #   TCGA-COAD: 941 files / 453 cases (MSI 175, MSS 766); 461 cases in project
 #   TCGA-READ: 353 files / 169 cases (MSI 13, MSS 340); 172 cases in project
 # A case can have WXS and WGS rows; 17 COAD/READ cases disagree between them. All rows
-# are kept in msi.tsv. The ~0.2 msi_score boundary is observed in the data, not a
-# documented GDC threshold.
+# are kept in msi.tsv. GDC calls MSI with MSIsensor2 (tumour-only) at a documented 20%
+# msi_score cutoff; see docs/decisions.md D4.
 #
 # MAF manifests: later steps must read MAFs via data/raw/maf/<project>/manifest.tsv, not
 # by globbing the folder. --limit runs write manifest.limited.tsv instead.

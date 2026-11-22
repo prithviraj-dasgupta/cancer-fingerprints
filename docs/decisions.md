@@ -40,10 +40,31 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - *Where:* validation, Milestone 4.
 
 ### D4. MSI status (colorectal MMR validation)
-- Use GDC `msi_status` (MSI/MSS on the tumour BAM records).
-- Before documenting it as MSIsensor-derived, check the GDC docs. That check is still to do;
-  record the source once confirmed.
-- When a case's WXS and WGS calls disagree, prefer WXS, because the MAFs are WXS.
+- Use GDC `msi_status` (MSI/MSS) and `msi_score` on tumour aligned-reads (BAM) files.
+- **Source (checked 2026-11-22):**
+  - The GDC computes these with **MSIsensor2**, from the tumour BAM alone; the original
+    MSIsensor uses a matched normal.
+  - The score is the fraction of valid microsatellite sites that are unstable.
+  - A BAM is called MSI using a **20% score cutoff**.
+  - Quotes: "The GDC adopts MSIsensor2 to derive Microsatellite Instability (MSI) information
+    from tumor DNA-Seq data" and "determined using a MSI score cutoff value of 20%". From the GDC
+    DNA-Seq pipeline docs:
+    <https://docs.gdc.cancer.gov/Data/Bioinformatics_Pipelines/DNA_Seq_Variant_Calling_Pipeline/#microsatellite-instability-detection>.
+  - The fields have been queryable for all projects since GDC Data Release 38.0 (Aug 2023).
+    That release says they "were produced using MSISensor2"
+    (<https://docs.gdc.cancer.gov/Data/Release_Notes/Data_Release_Notes/>).
+  - The GDC data dictionary describes the fields only as "MSIsensor"
+    (`aligned_reads.yaml`,
+    <https://github.com/NCI-GDC/gdcdictionary/blob/develop/src/gdcdictionary/schemas/aligned_reads.yaml>;
+    also `https://api.gdc.cancer.gov/files/_mapping`).
+  - No MSIsensor2 version is given, and the docs don't say whether exactly 0.20 counts as MSI.
+    In our data, MSS scores reach at most 0.1995 and MSI scores start at 0.209.
+- These are **bioinformatics-derived labels, not clinical MSI or MMR tests**. The GDC says so,
+  and the README must state this limitation for the colorectal MMR check.
+- One case can have several BAMs. In TCGA-COAD/READ there are 1,294 labelled BAMs: 636 WXS and
+  658 WGS (live API check, Data Release 46.0). The GDC warns that their statuses can disagree.
+- When a case's WXS and WGS calls disagree, prefer WXS, because the MAFs are WXS. Flag
+  disagreeing cases, especially scores near 0.20.
 - Sanity check: MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
 - *Where:* validation, Milestone 4.
 
@@ -57,28 +78,49 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - Revised 2026-11-22. The first version of this decision said exclusion matched
   SigProfilerMatrixGenerator. It does not: **SigProfilerMatrixGenerator 1.6.0 counts these SNVs
   in both** the SBS and the DBS matrices.
-  - Whether the COSMIC/PCAWG extraction kept the catalogues mutually exclusive is **not yet
-    verified**, so the choice is not claimed to follow PCAWG.
+  - **Literature check (2026-11-22).** Whether COSMIC v3 / PCAWG removed DBS-forming adjacent
+    SNVs from the SBS catalogues is **not stated** in any of these:
+    - the Methods or Supplementary Note 2 of Alexandrov et al. 2020
+      (doi:10.1038/s41586-020-1943-3);
+    - Bergstrom et al. 2019 on SigProfilerMatrixGenerator (doi:10.1186/s12864-019-6041-2);
+    - the PCAWG Consortium 2020 paper and its Supplementary Information
+      (doi:10.1038/s41586-020-1969-6).
+  - Excluding them by default is therefore **our own conservative choice, not a cited
+    convention**.
+  - The totals reported in Alexandrov 2020 are consistent with mutually exclusive counting but
+    do not establish it: 79,793,266 SBS + 814,191 DBS + 4,122,233 indels = 84,729,690
+    mutations.
+  - A definitive answer probably lies in the PCAWG consensus-calling and MNV-merging code or
+    the PCAWG Synapse data (login required).
 - Configurable via `profile.adjacent_snvs` in `config/config.yaml`, which the CLI reads as the
   default; `--adjacent-snvs` overrides it:
   - `exclude` (default);
   - `count_as_sbs` counts them as ordinary SBS, as SigProfilerMatrixGenerator 1.6.0 does.
   - SBS counts still differ from SigProfilerMatrixGenerator for other reasons: tri-allelic and
     strand drops, context taken from the MAF `CONTEXT` column, and different de-duplication.
-- A sample with two different alts at the same position inside a run has all of its rows at
-  that position treated as part of the run.
-  - **Open question for Prithviraj:** how to handle multi-allelic same-sample sites that have
-    no neighbour. Currently both alts are kept.
+- Multi-allelic positions are dropped before adjacency is assessed (see D6b). They therefore
+  never join a run, and an SNV next to one is kept as SBS.
 - Only pairs reported as two separate SNP rows are affected. GDC rows already merged by the
   caller (DNP/TNP/ONP) are dropped as `not_snp` in both modes. A neighbour dropped for another
   reason does not make a valid SNV adjacent.
-- **Phase 2 sensitivity check:** rerun the melanoma SBS7 result with `count_as_sbs`.
+- **Phase 2 sensitivity check:** rerun the melanoma SBS7 result with `count_as_sbs`. This is
+  where the choice matters most:
+  - melanoma: DBS1 CC>TT would otherwise add to the SBS7a/b C>T channels;
+  - smoking-related lung cancer: DBS2 CC>AA would otherwise add to the SBS4 C>A channels.
 - DBS signatures themselves stay out of scope for v1.
 - *Where:* `src/fingerprints/profile.py`, config, CLI `--adjacent-snvs`; implemented in PR #1.
 
 ### D6. Tri-allelic sites are dropped
 - Rows where both tumour alleles differ from the reference and from each other are dropped and
   counted under a named drop reason.
+- *Where:* `src/fingerprints/profile.py`, implemented in PR #1.
+
+### D6b. Multi-allelic positions are dropped (decided 2026-11-22)
+- When one sample has two or more different alt alleles at the same position, all rows at that
+  position are dropped and counted under `multiallelic_position`. They are more likely
+  artefacts than real events.
+- This is applied after the other row checks and after de-duplication, and before adjacency
+  detection.
 - *Where:* `src/fingerprints/profile.py`, implemented in PR #1.
 
 ### D7. Fitting settings (approved)
