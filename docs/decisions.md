@@ -47,12 +47,34 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - Sanity check: MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
 - *Where:* validation, Milestone 4.
 
-### D5. Adjacent SNVs are doublets, not SBS
-- Same-sample SNVs at adjacent positions are treated as doublet base substitutions (DBS).
-- They are excluded from the SBS96 counts, and how many there were is reported, matching
-  SigProfilerMatrixGenerator and COSMIC methods.
+### D5. Adjacent SNVs: SBS and DBS catalogues kept mutually exclusive (default)
+- Same-sample SNVs on the same chromosome at consecutive positions are treated as doublet (or
+  longer) substitutions.
+- **By default they are excluded from the SBS96 counts**, so the SBS and DBS catalogues are
+  mutually exclusive. This is a conservative choice.
+  - The number of such events is always reported: `dbs_events` for runs of 2, `mnv_events` for
+    runs of 3 or more.
+- Revised 2026-11-22. The first version of this decision said exclusion matched
+  SigProfilerMatrixGenerator. It does not: **SigProfilerMatrixGenerator 1.6.0 counts these SNVs
+  in both** the SBS and the DBS matrices.
+  - Whether the COSMIC/PCAWG extraction kept the catalogues mutually exclusive is **not yet
+    verified**, so the choice is not claimed to follow PCAWG.
+- Configurable via `profile.adjacent_snvs` in `config/config.yaml`, which the CLI reads as the
+  default; `--adjacent-snvs` overrides it:
+  - `exclude` (default);
+  - `count_as_sbs` counts them as ordinary SBS, as SigProfilerMatrixGenerator 1.6.0 does.
+  - SBS counts still differ from SigProfilerMatrixGenerator for other reasons: tri-allelic and
+    strand drops, context taken from the MAF `CONTEXT` column, and different de-duplication.
+- A sample with two different alts at the same position inside a run has all of its rows at
+  that position treated as part of the run.
+  - **Open question for Prithviraj:** how to handle multi-allelic same-sample sites that have
+    no neighbour. Currently both alts are kept.
+- Only pairs reported as two separate SNP rows are affected. GDC rows already merged by the
+  caller (DNP/TNP/ONP) are dropped as `not_snp` in both modes. A neighbour dropped for another
+  reason does not make a valid SNV adjacent.
+- **Phase 2 sensitivity check:** rerun the melanoma SBS7 result with `count_as_sbs`.
 - DBS signatures themselves stay out of scope for v1.
-- *Where:* `src/fingerprints/profile.py`, implemented in PR #1.
+- *Where:* `src/fingerprints/profile.py`, config, CLI `--adjacent-snvs`; implemented in PR #1.
 
 ### D6. Tri-allelic sites are dropped
 - Rows where both tumour alleles differ from the reference and from each other are dropped and
