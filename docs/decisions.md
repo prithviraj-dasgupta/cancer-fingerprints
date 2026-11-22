@@ -64,8 +64,15 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - One case can have several BAMs. In TCGA-COAD/READ there are 1,294 labelled BAMs: 636 WXS and
   658 WGS (live API check, Data Release 46.0). The GDC warns that their statuses can disagree.
 - When a case's WXS and WGS calls disagree, prefer WXS, because the MAFs are WXS. Flag
-  disagreeing cases, especially scores near 0.20.
-- Sanity check: MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
+  disagreeing cases.
+- **Borderline scores (decided after PR #1):** flag cases with an MSI score of 0.15–0.25 as
+  borderline. Rerun the MMR comparison with them excluded, as a sensitivity check.
+- **Sanity check:**
+  - MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
+  - Count **cases, not BAM files**.
+  - For the expected hypermutated/MSI fraction, cite: The Cancer Genome Atlas Network (2012)
+    Comprehensive molecular characterization of human colon and rectal cancer. *Nature*
+    487:330–337.
 - *Where:* validation, Milestone 4.
 
 ### D5. Adjacent SNVs: SBS and DBS catalogues kept mutually exclusive (default)
@@ -121,6 +128,11 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
   artefacts than real events.
 - This is applied after the other row checks and after de-duplication, and before adjacency
   detection.
+- Only rows that passed every other check count towards making a position multi-allelic. An alt
+  that fails a check (e.g. `context_mismatch`) does not make the position multi-allelic.
+  Confirmed after PR #1.
+- A real variant that the caller reported twice with different alts is therefore lost. This is
+  accepted, because it is counted in the drop summary.
 - *Where:* `src/fingerprints/profile.py`, implemented in PR #1.
 
 ### D7. Fitting settings (approved)
