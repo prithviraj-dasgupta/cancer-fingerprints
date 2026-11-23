@@ -23,6 +23,8 @@
       "submitter_id": "TCGA-XX-0001_diagnosis2",
       "primary_diagnosis": "Not Reported",
       "classification_of_tumor": "not reported",
+      "site_of_resection_or_biopsy": "WRONG-placeholder-record",
+      "tumor_of_origin": "WRONG-placeholder-record",
       "age_at_diagnosis": null
      },
      {
@@ -34,7 +36,9 @@
       "ajcc_pathologic_stage": "Stage IB",
       "tissue_or_organ_of_origin": "Upper lobe, lung",
       "morphology": "8140/3",
-      "icd_10_code": "C34.1"
+      "icd_10_code": "C34.1",
+      "site_of_resection_or_biopsy": "Upper lobe, lung",
+      "tumor_of_origin": "Lung, NOS"
      }
     ],
     "exposures": [

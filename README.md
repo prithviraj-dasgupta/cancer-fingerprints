@@ -96,8 +96,10 @@ Things the numbers do *not* show cleanly (all reported in the full summary):
   calls, low mutation counts and POLE-like signatures; none is established here.
 - **Melanomas without a UV-dominant profile are flagged, not excluded.** 22 of 417 SKCM tumours have
   summed SBS7a-d at or below 0.5 (`results/tables/validation_melanoma_non_uv.tsv`). The downloaded
-  clinical fields hold only histology and the sampled site, not acral/mucosal subtype, so we cannot
-  yet say whether these are acral or mucosal melanomas.
+  clinical fields hold histology and the biopsy site, but not acral/mucosal subtype, so we cannot
+  say whether these are acral or mucosal melanomas. 16 of the 22 are metastatic samples; three
+  were taken from non-skin sites (nasal cavity, anorectal region, vagina), which may be mucosal
+  melanomas but is not confirmed by these fields.
 - **Cases without data.** 90 clinical cases (LUAD 26, LUSC 14, COAD 33, READ 17) have no open-access
   masked MAF at GDC (only controlled-access or germline calls), so they cannot be analysed.
 - **Filters that did nothing.** Tri-allelic and multi-allelic filters removed no mutations in these

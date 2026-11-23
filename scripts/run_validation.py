@@ -179,13 +179,24 @@ def main(argv: list[str] | None = None) -> int:
             analysed_extra[col] = extra_clin[col].reindex(analysed["case_id"]).to_numpy()
     fields = [c for c in ("primary_diagnosis", "primary_site") if c in analysed_extra.columns]
     non_uv_fields = v.non_uv_field_counts(non_uv, analysed_extra, fields)
+    n_origin = int(
+        analysed["tumor_of_origin"].replace("", pd.NA).notna().sum()
+        if "tumor_of_origin" in analysed.columns
+        else 0
+    )
+    biopsy = analysed[["sample_type_code", "site_of_resection_or_biopsy"]].copy()
+    biopsy["sample_type_code"] = biopsy["sample_type_code"].astype(str)
+    biopsy_counts = v.non_uv_field_counts(
+        non_uv, biopsy, ["site_of_resection_or_biopsy"], by="sample_type_code"
+    )
     skcm_note = (
-        "Subtype not available in downloaded clinical fields: only histology "
-        "(`primary_diagnosis`, `morphology`) and the GDC `primary_site` / "
-        "`tissue_or_organ_of_origin` are present. There is no acral/mucosal/uveal field and no "
-        "genomic subtype (BRAF/NRAS/NF1) field. `primary_site` for SKCM largely reflects the "
-        "sampled (often metastatic) site and should not be read as the site of the primary "
-        "tumour."
+        "Subtype fields: biopsy site (`site_of_resection_or_biopsy`) is available. "
+        f"`tumor_of_origin` is empty in the downloaded data ({n_origin} of {len(analysed)} "
+        "analysed tumours have a value). Acral/mucosal/uveal subtype and genomic subtype "
+        "(BRAF/NRAS/NF1) are not recorded in the downloaded clinical fields; histology "
+        "(`primary_diagnosis`, `morphology`) is available. `primary_site` for SKCM largely "
+        "reflects the sampled (often metastatic) site and should not be read as the site of the "
+        "primary tumour."
         if extra_clin is not None
         else "Subtype not available in downloaded clinical fields (raw clinical table not found)."
     )
@@ -195,6 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         "msi_low_mmr": low_mmr,
         "melanoma_non_uv": non_uv,
         "non_uv_fields": non_uv_fields,
+        "non_uv_biopsy_site": biopsy_counts,
         "skcm_fields_note": skcm_note,
     }
 

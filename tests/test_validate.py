@@ -675,3 +675,46 @@ def test_summary_contains_new_sentences_and_counts():
         assert needle in text, needle
     # synthetic melanoma table: summed SBS7a-d = 0.8, 0.2, 0.0 -> 1 of 3 on both measures
     assert "in 1/3 tumours (33.3%) and above 50% in 1/3 (33.3%)" in text
+
+
+def test_non_uv_listing_has_biopsy_site_and_tumor_of_origin_columns():
+    t = mel_table()
+    t["case_id"] = ["c_a", "c_b", "c_c"]
+    t["uv_sbs7a_d"] = [0.1, 0.9, 0.2]
+    t["site_of_resection_or_biopsy"] = ["Lymph node, NOS", "Skin of trunk", None]
+    t["tumor_of_origin"] = ["", "", ""]
+    sigs = ["SBS1", "SBS5", "SBS7a", "SBS7b", "SBS7c", "SBS7d", "SBS38"]
+    out = v.melanoma_non_uv_listing(t, sigs).set_index("barcode")
+    assert {"site_of_resection_or_biopsy", "tumor_of_origin"} <= set(out.columns)
+    assert out.loc["a", "site_of_resection_or_biopsy"] == "Lymph node, NOS"
+    assert out.loc["c", "site_of_resection_or_biopsy"] == "not reported"
+    assert set(out["tumor_of_origin"]) == {"not reported"}  # blank everywhere
+    no_cols = v.melanoma_non_uv_listing(mel_table().assign(case_id=["a", "b", "c"]), sigs)
+    assert set(no_cols["site_of_resection_or_biopsy"]) == {"not available"}
+
+
+def test_field_counts_split_by_sample_type_and_summary_text():
+    all_t = pd.DataFrame(
+        {
+            "sample_type_code": ["01", "01", "06", "06", "06"],
+            "site": ["Skin", "Skin", "Lymph node", "Lymph node", None],
+        }
+    )
+    non_uv = pd.DataFrame({"sample_type_code": ["06", "01"], "site": ["Lymph node", "Skin"]})
+    fc = v.non_uv_field_counts(non_uv, all_t, ["site"], by="sample_type_code")
+    got = {(r.sample_type_code, r.value): (r.non_uv_n, r.all_analysed_n) for r in fc.itertuples()}
+    assert got == {
+        ("01", "Skin"): (1, 2),
+        ("06", "Lymph node"): (1, 2),
+        ("06", "not reported"): (0, 1),
+    }
+    nu = pd.DataFrame({"barcode": ["a"], "summed_sbs7a_d": [0.3]})
+    tables, flow = _synthetic_tables()
+    extras = {
+        "melanoma_non_uv": nu,
+        "non_uv_biopsy_site": fc,
+        "skcm_fields_note": "Subtype fields: `tumor_of_origin` is empty in the downloaded data",
+    }
+    text = v.build_summary(tables, flow, None, None, extras)
+    assert "Biopsy site (`site_of_resection_or_biopsy`) among non-UV melanomas" in text
+    assert "split by sample type" in text and "`tumor_of_origin` is empty" in text

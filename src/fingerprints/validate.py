@@ -1066,6 +1066,8 @@ def melanoma_adjacent_check(
     return row
 
 
+#: Fields read from the assembled SKCM table (clinical_<P>.tsv), not the raw download.
+SKCM_TABLE_FIELDS = ["site_of_resection_or_biopsy", "tumor_of_origin"]
 SKCM_CLINICAL_EXTRA = [
     "primary_diagnosis",
     "primary_site",
@@ -1104,6 +1106,11 @@ def melanoma_non_uv_listing(
             "cosine": t[COSINE_COL].to_numpy(),
         }
     )
+    for col in SKCM_TABLE_FIELDS:
+        if col in t.columns:
+            out[col] = t[col].fillna("not reported").replace("", "not reported").to_numpy()
+        else:
+            out[col] = "not available"
     for col in SKCM_CLINICAL_EXTRA:
         if extra_clinical is not None and col in extra_clinical.columns:
             vals = extra_clinical[col].reindex(out["case_id"]).to_numpy()
@@ -1114,18 +1121,34 @@ def melanoma_non_uv_listing(
 
 
 def non_uv_field_counts(
-    non_uv: pd.DataFrame, all_tumours: pd.DataFrame, fields: Sequence[str]
+    non_uv: pd.DataFrame,
+    all_tumours: pd.DataFrame,
+    fields: Sequence[str],
+    by: str | None = None,
 ) -> pd.DataFrame:
-    """Value counts of clinical fields among non-UV melanomas vs all analysed SKCM tumours."""
+    """Value counts of clinical fields among non-UV melanomas vs all analysed SKCM tumours.
+
+    With ``by`` (e.g. 'sample_type_code', present in both frames) counts are split by that
+    column.
+    """
     rows = []
     for f in fields:
         if f not in all_tumours.columns:
             continue
-        a = all_tumours[f].fillna("not reported").value_counts()
-        n = non_uv[f].value_counts() if f in non_uv.columns else pd.Series(dtype=int)
-        for val in a.index:
-            rows.append({"field": f, "value": val, "non_uv_n": int(n.get(val, 0)),
-                         "all_analysed_n": int(a[val])})  # fmt: skip
+        keys = [None] if by is None else sorted(all_tumours[by].astype(str).unique())
+        for key in keys:
+            a_sub = all_tumours if by is None else all_tumours[all_tumours[by].astype(str) == key]
+            n_sub = non_uv
+            if by is not None and by in non_uv.columns:
+                n_sub = non_uv[non_uv[by].astype(str) == key]
+            a = a_sub[f].fillna("not reported").value_counts()
+            n = n_sub[f].value_counts() if f in n_sub.columns else pd.Series(dtype=int)
+            for val in a.index:
+                row = {"field": f}
+                if by is not None:
+                    row[by] = key
+                row |= {"value": val, "non_uv_n": int(n.get(val, 0)), "all_analysed_n": int(a[val])}
+                rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -2184,6 +2207,15 @@ def supplementary_section(extras: dict[str, object]) -> list[str]:
                 "(counts):",
                 "",
                 table_to_markdown(fc, list(fc.columns)),
+                "",
+            ]
+        bs = extras.get("non_uv_biopsy_site")
+        if isinstance(bs, pd.DataFrame) and len(bs):
+            out += [
+                "Biopsy site (`site_of_resection_or_biopsy`) among non-UV melanomas vs all "
+                "analysed SKCM tumours, split by sample type (01 primary, 06 metastatic; counts):",
+                "",
+                table_to_markdown(bs, list(bs.columns)),
                 "",
             ]
         note = extras.get("skcm_fields_note")

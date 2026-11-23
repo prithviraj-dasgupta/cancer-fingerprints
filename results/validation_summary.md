@@ -409,30 +409,30 @@ The cut 0.25 was fixed before looking at the data and is a listing aid, not a te
 
 Count: 22 (this is the complement of the secondary '> 50%' measure; the boundary is inclusive). Flagged, not excluded. Full list: `results/tables/validation_melanoma_non_uv.tsv`.
 
-| barcode | sample_type_code | summed_sbs7a_d | top_fitted_signature | top_signature_fraction | total_snvs | cosine | primary_diagnosis | primary_site | tissue_or_organ_of_origin | morphology |
-|---|---|---|---|---|---|---|---|---|---|---|
-| TCGA-EB-A4OY-01A-11D-A25O-08 | 01 | 0.019 | SBS5 | 0.920 | 58 | 0.572 | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
-| TCGA-ER-A42H-01A-11D-A24R-08 | 01 | 0.051 | SBS5 | 0.421 | 60 | 0.883 | Malignant melanoma, NOS | Anus and anal canal | Skin, NOS | 8720/3 |
-| TCGA-D3-A1Q1-06A-21D-A196-08 | 06 | 0.058 | SBS5 | 0.780 | 50 | 0.704 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-ER-A3EV-06A-11D-A20D-08 | 06 | 0.089 | SBS5 | 0.695 | 83 | 0.783 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-GN-A4U9-06A-11D-A32N-08 | 06 | 0.095 | SBS5 | 0.750 | 70 | 0.697 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-ER-A2NB-01A-12D-A196-08 | 01 | 0.102 | SBS5 | 0.742 | 63 | 0.742 | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
-| TCGA-EE-A184-06A-11D-A196-08 | 06 | 0.106 | SBS38 | 0.887 | 313 | 0.966 | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
-| TCGA-RP-A6K9-06A-41D-A34U-08 | 06 | 0.133 | SBS5 | 0.511 | 56 | 0.773 | Malignant melanoma, NOS | Bones, joints and articular cartilage of other and unspecified sites | Skin, NOS | 8720/3 |
-| TCGA-YG-AA3P-06A-11D-A38G-08 | 06 | 0.149 | SBS5 | 0.638 | 78 | 0.752 | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
-| TCGA-D9-A4Z5-01A-11D-A25O-08 | 01 | 0.158 | SBS38 | 0.401 | 70 | 0.954 | Malignant melanoma, NOS | Nasal cavity and middle ear | Skin, NOS | 8720/3 |
-| TCGA-EB-A5SH-06A-11D-A30X-08 | 06 | 0.179 | SBS5 | 0.482 | 93 | 0.837 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-FR-A8YD-06A-11D-A372-08 | 06 | 0.187 | SBS5 | 0.729 | 104 | 0.803 | Malignant melanoma, NOS | Bronchus and lung | Skin, NOS | 8720/3 |
-| TCGA-FS-A1ZJ-06A-12D-A197-08 | 06 | 0.193 | SBS5 | 0.579 | 63 | 0.648 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-D3-A3BZ-06A-12D-A196-08 | 06 | 0.201 | SBS5 | 0.750 | 56 | 0.507 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-ER-A19B-06A-11D-A196-08 | 06 | 0.204 | SBS5 | 0.796 | 119 | 0.808 | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
-| TCGA-FW-A3I3-06A-11D-A21A-08 | 06 | 0.223 | SBS5 | 0.382 | 59 | 0.775 | Malignant melanoma, NOS | Vagina | Skin, NOS | 8720/3 |
-| TCGA-EB-A44R-06A-41D-A25O-08 | 06 | 0.226 | SBS5 | 0.353 | 59 | 0.841 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-ER-A3ET-06A-11D-A20D-08 | 06 | 0.255 | SBS5 | 0.624 | 91 | 0.754 | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
-| TCGA-ER-A19T-01A-11D-A19A-08 | 01 | 0.262 | SBS5 | 0.624 | 57 | 0.730 | Acral lentiginous melanoma, malignant | Skin | Skin, NOS | 8744/3 |
-| TCGA-EB-A42Y-01A-12D-A24R-08 | 01 | 0.280 | SBS5 | 0.534 | 65 | 0.770 | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
-| TCGA-EE-A2M7-06A-11D-A197-08 | 06 | 0.324 | SBS5 | 0.453 | 70 | 0.903 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
-| TCGA-D3-A8GD-06A-11D-A372-08 | 06 | 0.370 | SBS5 | 0.501 | 106 | 0.853 | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| barcode | sample_type_code | summed_sbs7a_d | top_fitted_signature | top_signature_fraction | total_snvs | cosine | site_of_resection_or_biopsy | tumor_of_origin | primary_diagnosis | primary_site | tissue_or_organ_of_origin | morphology |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| TCGA-EB-A4OY-01A-11D-A25O-08 | 01 | 0.019 | SBS5 | 0.920 | 58 | 0.572 | Skin of lower limb and hip | not reported | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
+| TCGA-ER-A42H-01A-11D-A24R-08 | 01 | 0.051 | SBS5 | 0.421 | 60 | 0.883 | Overlapping lesion of rectum, anus and anal canal | not reported | Malignant melanoma, NOS | Anus and anal canal | Skin, NOS | 8720/3 |
+| TCGA-D3-A1Q1-06A-21D-A196-08 | 06 | 0.058 | SBS5 | 0.780 | 50 | 0.704 | Lymph node, NOS | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-ER-A3EV-06A-11D-A20D-08 | 06 | 0.089 | SBS5 | 0.695 | 83 | 0.783 | Lymph node, NOS | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-GN-A4U9-06A-11D-A32N-08 | 06 | 0.095 | SBS5 | 0.750 | 70 | 0.697 | Lymph nodes of inguinal region or leg | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-ER-A2NB-01A-12D-A196-08 | 01 | 0.102 | SBS5 | 0.742 | 63 | 0.742 | Skin of trunk | not reported | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
+| TCGA-EE-A184-06A-11D-A196-08 | 06 | 0.106 | SBS38 | 0.887 | 313 | 0.966 | Skin of upper limb and shoulder | not reported | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
+| TCGA-RP-A6K9-06A-41D-A34U-08 | 06 | 0.133 | SBS5 | 0.511 | 56 | 0.773 | Bones of skull and face and associated joints | not reported | Malignant melanoma, NOS | Bones, joints and articular cartilage of other and unspecified sites | Skin, NOS | 8720/3 |
+| TCGA-YG-AA3P-06A-11D-A38G-08 | 06 | 0.149 | SBS5 | 0.638 | 78 | 0.752 | Connective, subcutaneous and other soft tissues of trunk, NOS | not reported | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
+| TCGA-D9-A4Z5-01A-11D-A25O-08 | 01 | 0.158 | SBS38 | 0.401 | 70 | 0.954 | Nasal cavity | not reported | Malignant melanoma, NOS | Nasal cavity and middle ear | Skin, NOS | 8720/3 |
+| TCGA-EB-A5SH-06A-11D-A30X-08 | 06 | 0.179 | SBS5 | 0.482 | 93 | 0.837 | Lymph node, NOS | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-FR-A8YD-06A-11D-A372-08 | 06 | 0.187 | SBS5 | 0.729 | 104 | 0.803 | Lower lobe, lung | not reported | Malignant melanoma, NOS | Bronchus and lung | Skin, NOS | 8720/3 |
+| TCGA-FS-A1ZJ-06A-12D-A197-08 | 06 | 0.193 | SBS5 | 0.579 | 63 | 0.648 | Lymph node, NOS | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-D3-A3BZ-06A-12D-A196-08 | 06 | 0.201 | SBS5 | 0.750 | 56 | 0.507 | Lymph nodes of head, face and neck | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-ER-A19B-06A-11D-A196-08 | 06 | 0.204 | SBS5 | 0.796 | 119 | 0.808 | Connective, subcutaneous and other soft tissues of trunk, NOS | not reported | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
+| TCGA-FW-A3I3-06A-11D-A21A-08 | 06 | 0.223 | SBS5 | 0.382 | 59 | 0.775 | Vagina, NOS | not reported | Malignant melanoma, NOS | Vagina | Skin, NOS | 8720/3 |
+| TCGA-EB-A44R-06A-41D-A25O-08 | 06 | 0.226 | SBS5 | 0.353 | 59 | 0.841 | Lymph nodes of inguinal region or leg | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-ER-A3ET-06A-11D-A20D-08 | 06 | 0.255 | SBS5 | 0.624 | 91 | 0.754 | Connective, subcutaneous and other soft tissues, NOS | not reported | Malignant melanoma, NOS | Connective, subcutaneous and other soft tissues | Skin, NOS | 8720/3 |
+| TCGA-ER-A19T-01A-11D-A19A-08 | 01 | 0.262 | SBS5 | 0.624 | 57 | 0.730 | Skin of lower limb and hip | not reported | Acral lentiginous melanoma, malignant | Skin | Skin, NOS | 8744/3 |
+| TCGA-EB-A42Y-01A-12D-A24R-08 | 01 | 0.280 | SBS5 | 0.534 | 65 | 0.770 | Skin of upper limb and shoulder | not reported | Malignant melanoma, NOS | Skin | Skin, NOS | 8720/3 |
+| TCGA-EE-A2M7-06A-11D-A197-08 | 06 | 0.324 | SBS5 | 0.453 | 70 | 0.903 | Lymph nodes of axilla or arm | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
+| TCGA-D3-A8GD-06A-11D-A372-08 | 06 | 0.370 | SBS5 | 0.501 | 106 | 0.853 | Lymph nodes of inguinal region or leg | not reported | Malignant melanoma, NOS | Lymph nodes | Skin, NOS | 8720/3 |
 
 Histology and site fields among non-UV melanomas vs all analysed SKCM tumours (counts):
 
@@ -466,7 +466,63 @@ Histology and site fields among non-UV melanomas vs all analysed SKCM tumours (c
 | primary_site | Anus and anal canal | 1 | 1 |
 | primary_site | Breast | 0 | 1 |
 
-Subtype not available in downloaded clinical fields: only histology (`primary_diagnosis`, `morphology`) and the GDC `primary_site` / `tissue_or_organ_of_origin` are present. There is no acral/mucosal/uveal field and no genomic subtype (BRAF/NRAS/NF1) field. `primary_site` for SKCM largely reflects the sampled (often metastatic) site and should not be read as the site of the primary tumour.
+Biopsy site (`site_of_resection_or_biopsy`) among non-UV melanomas vs all analysed SKCM tumours, split by sample type (01 primary, 06 metastatic; counts):
+
+| field | sample_type_code | value | non_uv_n | all_analysed_n |
+|---|---|---|---|---|
+| site_of_resection_or_biopsy | 01 | Skin of trunk | 1 | 26 |
+| site_of_resection_or_biopsy | 01 | Skin, NOS | 0 | 25 |
+| site_of_resection_or_biopsy | 01 | Skin of upper limb and shoulder | 1 | 13 |
+| site_of_resection_or_biopsy | 01 | Skin of lower limb and hip | 2 | 9 |
+| site_of_resection_or_biopsy | 01 | Skin of scalp and neck | 0 | 3 |
+| site_of_resection_or_biopsy | 01 | Connective, subcutaneous and other soft tissues of lower limb and hip | 0 | 2 |
+| site_of_resection_or_biopsy | 01 | Connective, subcutaneous and other soft tissues of upper limb and shoulder | 0 | 2 |
+| site_of_resection_or_biopsy | 01 | External ear | 0 | 1 |
+| site_of_resection_or_biopsy | 01 | Pelvic lymph nodes | 0 | 1 |
+| site_of_resection_or_biopsy | 01 | Nasal cavity | 1 | 1 |
+| site_of_resection_or_biopsy | 01 | Connective, subcutaneous and other soft tissues of trunk, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 01 | Connective, subcutaneous and other soft tissues of head, face, and neck | 0 | 1 |
+| site_of_resection_or_biopsy | 01 | Overlapping lesion of rectum, anus and anal canal | 1 | 1 |
+| site_of_resection_or_biopsy | 01 | Skin of other and unspecified parts of face | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Lymph nodes of axilla or arm | 1 | 91 |
+| site_of_resection_or_biopsy | 06 | Lymph nodes of inguinal region or leg | 3 | 40 |
+| site_of_resection_or_biopsy | 06 | Lymph node, NOS | 4 | 36 |
+| site_of_resection_or_biopsy | 06 | Skin of trunk | 0 | 19 |
+| site_of_resection_or_biopsy | 06 | Lymph nodes of head, face and neck | 1 | 18 |
+| site_of_resection_or_biopsy | 06 | Skin, NOS | 0 | 13 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of thorax | 0 | 11 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of lower limb and hip | 0 | 11 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of trunk, NOS | 2 | 10 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of upper limb and shoulder | 0 | 9 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues, NOS | 1 | 9 |
+| site_of_resection_or_biopsy | 06 | Skin of upper limb and shoulder | 1 | 7 |
+| site_of_resection_or_biopsy | 06 | Small intestine, NOS | 0 | 7 |
+| site_of_resection_or_biopsy | 06 | Pelvic lymph nodes | 0 | 5 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of head, face, and neck | 0 | 5 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of pelvis | 0 | 5 |
+| site_of_resection_or_biopsy | 06 | Lower lobe, lung | 1 | 4 |
+| site_of_resection_or_biopsy | 06 | Skin of scalp and neck | 0 | 3 |
+| site_of_resection_or_biopsy | 06 | Upper lobe, lung | 0 | 3 |
+| site_of_resection_or_biopsy | 06 | Skin of lower limb and hip | 0 | 3 |
+| site_of_resection_or_biopsy | 06 | Adrenal gland, NOS | 0 | 2 |
+| site_of_resection_or_biopsy | 06 | Frontal lobe | 0 | 2 |
+| site_of_resection_or_biopsy | 06 | Brain, NOS | 0 | 2 |
+| site_of_resection_or_biopsy | 06 | Connective, subcutaneous and other soft tissues of abdomen | 0 | 2 |
+| site_of_resection_or_biopsy | 06 | Intra-abdominal lymph nodes | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Vagina, NOS | 1 | 1 |
+| site_of_resection_or_biopsy | 06 | Parotid gland | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Bones of skull and face and associated joints | 1 | 1 |
+| site_of_resection_or_biopsy | 06 | Pelvis, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Liver | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Endometrium | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Colon, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Lung, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Thorax, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Abdomen, NOS | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Parietal lobe | 0 | 1 |
+| site_of_resection_or_biopsy | 06 | Breast, NOS | 0 | 1 |
+
+Subtype fields: biopsy site (`site_of_resection_or_biopsy`) is available. `tumor_of_origin` is empty in the downloaded data (0 of 417 analysed tumours have a value). Acral/mucosal/uveal subtype and genomic subtype (BRAF/NRAS/NF1) are not recorded in the downloaded clinical fields; histology (`primary_diagnosis`, `morphology`) is available. `primary_site` for SKCM largely reflects the sampled (often metastatic) site and should not be read as the site of the primary tumour.
 
 ## Limitations and notes
 

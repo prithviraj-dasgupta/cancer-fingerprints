@@ -146,6 +146,9 @@ def test_flatten_case_picks_primary_diagnosis_and_tobacco_exposure():
     assert row["n_exposure_records"] == 2
     assert row["n_diagnosis_records"] == 2
     assert row["tobacco_status_conflict"] is False
+    # site fields come from the same diagnosis as primary_diagnosis, not the placeholder
+    assert row["site_of_resection_or_biopsy"] == "Upper lobe, lung"
+    assert row["tumor_of_origin"] == "Lung, NOS"
     assert set(row) == set(dd.CLINICAL_COLUMNS)
 
 
@@ -488,3 +491,14 @@ def test_flatten_case_gender_falls_back_to_sex_at_birth():
     assert flat["gender"] == "female"
     flat = dd.flatten_case({"case_id": "c", "demographic": {"gender": "male", "sex_at_birth": "x"}})
     assert flat["gender"] == "male"
+
+
+def test_flatten_case_site_fields_missing():
+    # record present but without the fields
+    row = dd.flatten_case(_cases()[1])
+    assert row["site_of_resection_or_biopsy"] is None and row["tumor_of_origin"] is None
+    # no diagnoses at all
+    row = dd.flatten_case({"case_id": "c", "diagnoses": []})
+    assert row["site_of_resection_or_biopsy"] is None and row["tumor_of_origin"] is None
+    assert "site_of_resection_or_biopsy" in dd.CLINICAL_COLUMNS
+    assert "tumor_of_origin" in dd.CLINICAL_COLUMNS

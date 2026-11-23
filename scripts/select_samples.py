@@ -126,6 +126,9 @@ def process(project: str, cfg: dict, root: Path, out_dir: Path) -> dict:
             "borderline": int(df["msi_borderline"].fillna(False).astype(bool).sum()),
             "wxs_wgs_disagree": int(df["msi_wxs_wgs_disagree"].fillna(False).astype(bool).sum()),
         }
+    # Newer columns go last so existing column positions never move.
+    new_cols = [c for c in ("site_of_resection_or_biopsy", "tumor_of_origin") if c in clinical]
+    df = df.merge(clinical[["case_id", *new_cols]], on="case_id", how="left")
     df.to_csv(out_dir / f"clinical_{project}.tsv", sep="\t", index=False)
     return summary
 
