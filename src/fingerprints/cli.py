@@ -2,7 +2,7 @@
 
 Subcommands:
     profile  MAF -> 96-channel SBS matrix (TSV)
-    fit      fit a profile to COSMIC signatures (Phase 2)
+    fit      NNLS refitting of a cohort's profiles to COSMIC signatures
     explain  plain-English report from exposures (Phase 2)
 """
 
@@ -113,6 +113,75 @@ def _cmd_profile(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _load_config_file(config_arg: Path | None) -> tuple[dict, Path]:
+    """Load the project config for ``fit`` (needed: it holds the signature subsets).
+
+    An explicit ``--config`` that is missing is an error; so is a missing default file,
+    because fitting cannot run without ``fitting.signature_subsets``.
+    """
+    path = config_arg if config_arg is not None else DEFAULT_CONFIG
+    if not path.is_file():
+        raise ConfigError(f"config file not found: {path}")
+
+    import yaml
+
+    try:
+        with open(path, encoding="utf-8") as fh:
+            config = yaml.safe_load(fh) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        raise ConfigError(f"could not read config {path}: {exc}") from exc
+    if not isinstance(config, dict):
+        raise ConfigError(f"config {path} is not a YAML mapping")
+    return config, path
+
+
+def _cmd_fit(args: argparse.Namespace) -> int:
+    """NNLS-refit a cohort's SBS96 matrix to the COSMIC subset for one project."""
+    if not args.matrix.is_file():
+        return _error(f"matrix file not found: {args.matrix}")
+    try:
+        config, config_path = _load_config_file(args.config)
+    except ConfigError as exc:
+        return _error(str(exc))
+    if args.min_snvs is not None and args.min_snvs < 0:
+        return _error("--min-snvs must be >= 0")
+
+    # Imported lazily so the CLI (and --help) works without scipy/fit module.
+    import pandas as pd
+
+    from fingerprints import fit
+
+    try:
+        sig = config.get("signatures") or {}
+        raw = (config.get("paths") or {}).get("raw_signatures")
+        if not raw or not sig.get("file"):
+            return _error(
+                f"config {config_path}: paths.raw_signatures and signatures.file are needed"
+            )
+        reference_path = Path(raw) / sig["file"]
+        matrix = pd.read_csv(args.matrix, sep="\t", index_col=0)
+        reference = fit.load_reference(reference_path)
+        result = fit.run_cohort_fit(args.project, config, matrix, reference, min_snvs=args.min_snvs)
+        paths = fit.save_results(result, args.output_dir)
+    except (OSError, ValueError, pd.errors.ParserError) as exc:
+        return _error(str(exc))
+
+    print(f"config={config_path} reference={reference_path}", file=sys.stderr)
+    print(
+        f"{fit.METHOD_DESCRIPTION}: {result.project}: {len(result.exposures)} tumours fitted "
+        f"with {len(result.signatures)} signatures; {len(result.excluded)} of {result.n_input} "
+        f"excluded (< {result.min_snvs} SNVs)",
+        file=sys.stderr,
+    )
+    sens = ", ".join(
+        f"<{int(r.min_snvs)}: {int(r.n_excluded)}" for r in result.sensitivity.itertuples()
+    )
+    print(f"excluded by threshold: {sens}", file=sys.stderr)
+    for path in paths:
+        print(f"Wrote {path}", file=sys.stderr)
+    return EXIT_OK
+
+
 def _cmd_not_implemented(args: argparse.Namespace) -> int:
     """Placeholder for subcommands arriving in a later phase."""
     print(f"fingerprints {args.command}: not implemented yet (Phase 2)", file=sys.stderr)
@@ -164,8 +233,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_profile.set_defaults(func=_cmd_profile)
 
-    p_fit = sub.add_parser("fit", help="Fit profiles to COSMIC signatures (Phase 2).")
-    p_fit.set_defaults(func=_cmd_not_implemented)
+    p_fit = sub.add_parser(
+        "fit",
+        help="NNLS refitting of a cohort's SBS96 matrix to its COSMIC v3.4 signature subset.",
+    )
+    p_fit.add_argument("matrix", type=Path, help="SBS96 matrix TSV from `fingerprints profile`.")
+    p_fit.add_argument("--project", required=True, help="TCGA project id, e.g. TCGA-LUAD.")
+    p_fit.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help=(
+            f"Project config YAML (default: {DEFAULT_CONFIG}). Holds fitting.* and the "
+            "reference path (the config and reference paths are relative to the current "
+            "directory). Must exist: fitting cannot run without it."
+        ),
+    )
+    p_fit.add_argument(
+        "--min-snvs",
+        type=int,
+        default=None,
+        help="Skip tumours with fewer SNVs than this (default: fitting.min_snvs in config).",
+    )
+    p_fit.add_argument(
+        "-o", "--output-dir", type=Path, required=True, help="Directory for the output TSVs."
+    )
+    p_fit.set_defaults(func=_cmd_fit)
 
     p_explain = sub.add_parser("explain", help="Plain-English report from exposures (Phase 2).")
     p_explain.set_defaults(func=_cmd_not_implemented)

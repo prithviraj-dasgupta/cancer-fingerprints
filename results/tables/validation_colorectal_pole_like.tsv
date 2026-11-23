@@ -1,0 +1,7 @@
+analysis	cohort	comparison	label	setting	min_snvs	min_cosine	group1	group2	n1	n2	median1	iqr1	median2	iqr2	effect_name	effect	ci_low	ci_high	rank_biserial	p	min	max	median_cosine1	median_cosine2	notes
+colorectal_pole_like	COAD+READ	MSI tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSI		80						proportion (Wilson 95% CI)	0.0125	0.00220998	0.0674627					0.992797		1/80. descriptive count, not an exclusion
+colorectal_pole_like	COAD+READ	MSS tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSS		458						proportion (Wilson 95% CI)	0.0240175	0.0134629	0.0424902					0.946946		11/458. descriptive count, not an exclusion
+colorectal_pole_like	COAD	MSI tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSI		74						proportion (Wilson 95% CI)	0	0	0.0493498					0.992769		0/74. descriptive count, not an exclusion
+colorectal_pole_like	COAD	MSS tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSS		329						proportion (Wilson 95% CI)	0.0243161	0.0123718	0.0472406					0.950709		8/329. descriptive count, not an exclusion
+colorectal_pole_like	READ	MSI tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSI		6						proportion (Wilson 95% CI)	0.166667	0.0300534	0.563503					0.995772		1/6. descriptive count, not an exclusion
+colorectal_pole_like	READ	MSS tumours with SBS10a+SBS10b+SBS28 fraction > 0.5	descriptive	primary	50		MSS		129						proportion (Wilson 95% CI)	0.0232558	0.00794014	0.0661441					0.938878		3/129. descriptive count, not an exclusion

@@ -64,8 +64,15 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - One case can have several BAMs. In TCGA-COAD/READ there are 1,294 labelled BAMs: 636 WXS and
   658 WGS (live API check, Data Release 46.0). The GDC warns that their statuses can disagree.
 - When a case's WXS and WGS calls disagree, prefer WXS, because the MAFs are WXS. Flag
-  disagreeing cases, especially scores near 0.20.
-- Sanity check: MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
+  disagreeing cases.
+- **Borderline scores (decided after PR #1):** flag cases with an MSI score of 0.15–0.25 as
+  borderline. Rerun the MMR comparison with them excluded, as a sensitivity check.
+- **Sanity check:**
+  - MSI-H should be roughly 10–20% of COAD, and those tumours should be hypermutated.
+  - Count **cases, not BAM files**.
+  - For the expected hypermutated/MSI fraction, cite: The Cancer Genome Atlas Network (2012)
+    Comprehensive molecular characterization of human colon and rectal cancer. *Nature*
+    487:330–337.
 - *Where:* validation, Milestone 4.
 
 ### D5. Adjacent SNVs: SBS and DBS catalogues kept mutually exclusive (default)
@@ -121,6 +128,11 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
   artefacts than real events.
 - This is applied after the other row checks and after de-duplication, and before adjacency
   detection.
+- Only rows that passed every other check count towards making a position multi-allelic. An alt
+  that fails a check (e.g. `context_mismatch`) does not make the position multi-allelic.
+  Confirmed after PR #1.
+- A real variant that the caller reported twice with different alts is therefore lost. This is
+  accepted, because it is counted in the drop summary.
 - *Where:* `src/fingerprints/profile.py`, implemented in PR #1.
 
 ### D7. Fitting settings (approved)
@@ -134,11 +146,60 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
   Phase 2 fitting runs**.
 - *Where:* `config/config.yaml`, `fit.py` (Phase 2).
 
+#### D7 sign-off: cohort signature subsets (approved 2026-11-22)
+Subsets are in `config/config.yaml` (`fitting.signature_subsets`), proposed from Alexandrov et
+al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
+1. **Core/minor cut-off:** about 20% of tumours in ED Fig. 5. Approved.
+2. **SBS18** is kept in lung **and added to colorectal**. Run a with/without-SBS18
+   sensitivity check for the smoker vs never-smoker result.
+3. **Newer colorectal signatures** (SBS88 colibactin, SBS36, SBS10c/d) are **not** in the v1
+   fit. SBS88 (Pleguezuelos-Manzano et al. 2020) is listed as a known limitation in the README.
+4. **Colorectal:** SBS21 is dropped (near-duplicate of SBS26). There is **no
+   minimum-exposure gate and no separate MSS list**, because both would use MSI status to
+   shape the fit that is then tested against MSI status (circular).
+   - MMR validation: test the **summed MMR exposure (SBS6+14+15+20+26+44)** in MSI vs MSS.
+   - Report the SBS1/SBS6 overlap as a limitation.
+5. **Plain-English summaries** group signatures, while tables keep the individual ones:
+   - SBS1 + SBS5 + SBS40a: "background / ageing-related processes (SBS40a: cause unknown)";
+   - SBS7a–d + SBS38: "UV light (SBS38 proposed)".
+6. **APOBEC (SBS2/SBS13)** is not added to melanoma or colorectal: they fall below the 20%
+   rule, which is applied consistently.
+7. **Prevalences** are figure estimates. Label them approximate and cite the figure (ED Fig. 5).
+- Final subsets: LUAD and LUSC: SBS1, 2, 4, 5, 13, 18. SKCM: SBS1, 5, 7a–d, 38. COAD and READ
+  (shared): SBS1, 5, 40a, 44, 6, 15, 26, 14, 20, 10a, 10b, 28, 18.
+- **Fitting method (2026-11-22):** direct unpenalised NNLS (`scipy.optimize.nnls`) on exactly
+  the approved subset, not SigProfilerAssignment's `cosmic_fit`.
+  - `cosmic_fit` applies its own forward/backward signature selection, which can add or drop
+    SBS4, SBS7 or MMR signatures and would confound the validations (it zeroed SBS18 in all 25
+    tested LUAD tumours).
+  - A cross-check on 30 LUAD tumours: per-tumour exposure correlation SBS4 0.98, SBS13 0.94,
+    SBS2 0.86, SBS5 0.64, SBS1 0.60.
+  - Overlapping weak signatures (SBS1/SBS5/SBS40a, SBS18, SBS6) can trade exposure, so
+    validation uses grouped or summed exposures.
+- **Validation specification (fixed before any result was seen):**
+  - Report the per-tumour reconstruction cosine alongside every result. As a sensitivity
+    analysis, rerun with tumours below cosine 0.8 excluded. This is a quality filter and never
+    uses smoking or MSI status.
+  - Melanoma: the primary measure is the summed fraction of SBS7a–d. Secondary: SBS7a+b only,
+    and SBS7a–d + SBS38.
+  - Lung: SBS4 fraction.
+  - Colorectal: summed MMR fraction (SBS6+14+15+20+26+44).
+  - Exposures are NNLS-attributed counts and can differ from observed SNV counts when the fit is
+    poor.
+- Phase 2 sensitivity checks (all reported): SBS18 with/without (lung smoker vs never-smoker);
+  `min_snvs` 20 and 100; `adjacent_snvs: count_as_sbs` (melanoma SBS7, D5); MSI scores
+  0.15–0.25 excluded (D4).
+
 ### D8. Citations
 - Signatures: Alexandrov L.B. et al. (2020) The repertoire of mutational signatures in human
   cancer. *Nature* 578:94–101.
 - COSMIC: Sondka Z. et al. (2024) *Nucleic Acids Res* 52(D1):D1210–D1217.
 - SigProfilerAssignment: Díaz-Gay M. et al. (2023) *Bioinformatics* 39(12):btad756.
+- Never-smoker lung cancer context (added 2026-11-23): Zhang T. et al. (2021) Genomic and
+  evolutionary classification of lung cancer in never smokers. *Nat Genet* 53(9):1348–1359,
+  doi:10.1038/s41588-021-00920-0, PMID 34493867 (verified on PubMed by Prithviraj). Its abstract
+  says no strong tobacco smoking signatures were detected in never-smoker lung cancers, even with
+  second-hand smoke exposure.
 - *Where:* README.
 
 ## Earlier decisions (Phase 1 build)
@@ -154,3 +215,36 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
 - The bundled v3.4 exome file is copied into gitignored `data/` and checked against a sha256
   pinned in `config/`.
 - COSMIC files are never committed.
+
+## 2026-11-23: Phase 2 review answers
+
+### D9. Phase 2 review answers (Prithviraj)
+Decided after the validation results were first seen. They add reporting and extra tests; no
+pre-specified primary analysis or number changes.
+- **(a) Primary threshold.** Keep the pre-specified >= 50 SNV filter as the headline. The 20 and
+  100 SNV results are shown in the same table as sensitivity analyses. The LUAD result holds
+  across thresholds (AUC 0.72-0.88). Never switch the headline to the better-looking number after
+  seeing results.
+- **(b) Never-smokers with SBS4.** README wording: a minority of reported never-smokers show
+  tobacco-like SBS4 exposure; possible reasons include misreported smoking history, second-hand
+  smoke, or overlap between SBS4 and similar signatures; the analysis cannot tell these apart.
+  Zhang et al. 2021 (D8) is cited as context only.
+- **(c) Pack-years.** No pack-years dose-response is expected from the fraction: an exposure
+  fraction is compositional and pack-years are self-reported and noisy. An extra secondary test is
+  added: Spearman of the SBS4 mutation COUNT (NNLS-attributed exposure) vs pack-years in
+  ever-smokers (LUAD, LUSC), same filters and CI method, shown beside the fraction version. The count scales
+  with total mutational burden, so it may partly track burden; it is secondary, has no multiplicity
+  correction, and was added after the fraction result was seen (at Prithviraj's request).
+- **(d) Low summed MMR in MSS.** Likely SBS1/SBS6 overlap plus the noise floor of NNLS refitting,
+  not real mismatch-repair deficiency.
+- **(e) READ MSI.** A READ MSI share of 5.8% is expected (MSI is rarer in rectal than colon
+  cancer). Report colon and rectum prevalence separately (the 10-20% check applies to colon
+  only). Keep MSI tumours with low summed MMR in the analysis and list them in a supplementary
+  table (listing cut 0.25, fixed in advance; a listing aid, not a test).
+- **(f) Non-UV melanomas.** Flag, do not exclude: summed SBS7a-d fraction <= 0.5. Show primary
+  site / histology fields where the clinical data has them.
+- **(g) Confirmed.** The "consistent with" wording rule (AUC 95% CI excludes 0.5 in the expected
+  direction), the 0.05 materiality threshold for the D5 check (on the median paired difference),
+  and the van Elteren stratified test for the pooled lung model.
+- *Where:* `src/fingerprints/validate.py`, `scripts/run_validation.py`,
+  `results/validation_summary.md`, `results/tables/validation_*.tsv`.

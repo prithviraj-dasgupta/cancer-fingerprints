@@ -1,0 +1,15 @@
+cohort	group	chosen_cases	absent_from_matrix	in_fit_table	snvs_ge_20	snvs_ge_50	snvs_ge_100	snvs_ge_50_and_cosine_ge_0.8
+LUAD	never	69	0	63	63	33	17	26
+LUAD	other_ever	137	0	133	133	114	95	97
+LUAD	smoker	287	0	285	285	273	245	254
+LUAD	unknown_or_conflict	64	0	60	60	53	43	46
+LUSC	never	18	0	17	17	14	12	13
+LUSC	other_ever	86	0	86	86	84	77	75
+LUSC	smoker	369	0	366	366	366	350	350
+LUSC	unknown_or_conflict	12	0	11	11	11	11	11
+SKCM	sample type 01	104	0	97	97	87	75	83
+SKCM	sample type 06	363	0	357	357	330	309	321
+COAD	MSI	75	0	75	75	74	73	74
+COAD	MSS	353	0	341	341	329	211	324
+READ	MSI	9	0	7	7	6	6	6
+READ	MSS	146	0	136	136	129	66	127

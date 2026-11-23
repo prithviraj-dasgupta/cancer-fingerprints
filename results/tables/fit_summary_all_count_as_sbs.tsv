@@ -1,0 +1,2 @@
+project	n_tumours_input	n_signatures	n_excluded_lt20	n_excluded_lt50	n_excluded_lt100	n_fitted_main	mean_cosine	median_cosine	frac_cosine_lt_0.8	n_cosine_lt_0.8
+TCGA-SKCM_count_as_sbs	467	7	13	49	82	418	0.9742	0.9904	0.03589	15

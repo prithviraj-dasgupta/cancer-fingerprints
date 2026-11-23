@@ -126,6 +126,8 @@ CLINICAL_COLUMNS = [
     "tissue_or_organ_of_origin",
     "morphology",
     "icd_10_code",
+    "site_of_resection_or_biopsy",
+    "tumor_of_origin",
     # tobacco exposure
     "tobacco_smoking_status",
     "pack_years_smoked",
@@ -378,7 +380,8 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
         "project": project,
         "primary_site": case.get("primary_site", ""),
         "disease_type": case.get("disease_type", ""),
-        "gender": demo.get("gender"),
+        # GDC renamed demographic.gender to sex_at_birth; accept either.
+        "gender": demo.get("gender") or demo.get("sex_at_birth"),
         "race": demo.get("race"),
         "ethnicity": demo.get("ethnicity"),
         "vital_status": demo.get("vital_status"),
@@ -390,6 +393,9 @@ def flatten_case(case: dict[str, Any]) -> dict[str, Any]:
         "tissue_or_organ_of_origin": diag.get("tissue_or_organ_of_origin"),
         "morphology": diag.get("morphology"),
         "icd_10_code": diag.get("icd_10_code"),
+        # Both come from the same diagnosis record chosen by _primary_diagnosis() above.
+        "site_of_resection_or_biopsy": diag.get("site_of_resection_or_biopsy"),
+        "tumor_of_origin": diag.get("tumor_of_origin"),
         "tobacco_smoking_status": tob.get("tobacco_smoking_status"),
         "pack_years_smoked": tob.get("pack_years_smoked"),
         "cigarettes_per_day": tob.get("cigarettes_per_day"),
@@ -770,6 +776,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--skip-clinical", action="store_true", help="Do not fetch the clinical cases table"
     )
+    p.add_argument(
+        "--rebuild-clinical",
+        action="store_true",
+        help="Offline: rewrite clinical.tsv from the saved cases.json files; no network, "
+        "no MAF or manifest changes",
+    )
     p.add_argument("--skip-msi", action="store_true", help="Do not fetch MSI metadata (colorectal)")
     p.add_argument(
         "--no-verify-md5",
@@ -796,6 +808,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit is not None and args.limit < 1:
         log.error("--limit must be >= 1")
         return 2
+
+    if args.rebuild_clinical:
+        raw_clin = args.out / config["paths"]["raw_clinical"]
+        for project in projects:
+            with open(raw_clin / project / "cases.json") as fh:
+                cases = json.load(fh)
+            n = write_tsv(
+                (flatten_case(c) for c in cases),
+                raw_clin / project / "clinical.tsv",
+                CLINICAL_COLUMNS,
+            )
+            log.info("%s: rebuilt clinical.tsv for %d cases", project, n)
+        return 0
 
     http = config["gdc"]["http"]
     client = GDCClient(

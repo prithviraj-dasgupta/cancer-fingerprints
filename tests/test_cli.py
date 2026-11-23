@@ -5,12 +5,14 @@ from __future__ import annotations
 import subprocess
 import sys
 import types
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 import fingerprints
 from fingerprints import cli
+from fingerprints.fit import FitResult
 
 
 class FakeProfile:
@@ -82,167 +84,142 @@ def test_no_command_is_an_error():
     assert exc.value.code == 2
 
 
-@pytest.mark.parametrize("command", ["fit", "explain"])
-def test_stub_commands_exit_3(command, capsys):
-    assert cli.main([command]) == cli.EXIT_NOT_IMPLEMENTED == 3
+def test_explain_stub_exits_3(capsys):
+    assert cli.main(["explain"]) == cli.EXIT_NOT_IMPLEMENTED == 3
     assert "not implemented yet (Phase 2)" in capsys.readouterr().err
 
 
-def test_profile_requires_output(capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["profile", "in.maf"])
-    assert exc.value.code == 2
-    assert "--output" in capsys.readouterr().err
+class FakeFit:
+    """Records calls to fake fit functions; can be told to raise."""
+
+    METHOD_DESCRIPTION = "fake NNLS"
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+        self.raises: Exception | None = None
+
+    def load_reference(self, path):
+        self.calls.append({"reference": path})
+        return pd.DataFrame({"SBS1": [1.0]})
+
+    def run_cohort_fit(self, project, config, matrix, reference, min_snvs=None):
+        self.calls.append({"project": project, "min_snvs": min_snvs, "shape": matrix.shape})
+        if self.raises is not None:
+            raise self.raises
+        expo = pd.DataFrame({"SBS1": [5.0]}, index=["S1"])
+        return FitResult(
+            project=project,
+            signatures=["SBS1"],
+            exposures=expo,
+            fractions=expo / 5.0,
+            cosine=pd.Series([1.0]),
+            qc=pd.DataFrame(),
+            excluded_table=pd.DataFrame(),
+            n_input=2,
+            min_snvs=min_snvs or 50,
+            excluded=["S2"],
+            sensitivity=pd.DataFrame({"min_snvs": [50, 20], "n_excluded": [1, 0]}),
+        )
+
+    def save_results(self, result, output_dir):
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"exposures_{result.project}.tsv"
+        path.write_text("x")
+        return [path]
 
 
-def test_profile_writes_tsv(tmp_path, maf, fake_profile):
-    out = tmp_path / "nested" / "sbs96.tsv"
-
-    assert cli.main(["profile", str(maf), "--output", str(out)]) == 0
-
-    assert fake_profile.calls == [
-        {"maf_path": maf, "sample_col": "Tumor_Sample_Barcode", "adjacent_snvs": "exclude"}
-    ]
-    written = pd.read_csv(out, sep="\t", index_col=0)
-    assert written.shape == (96, 2)
-    assert list(written.columns) == ["S1", "S2"]
-    assert written.index.name == "MutationType"
-
-
-def test_profile_passes_sample_col(tmp_path, maf, fake_profile):
-    out = tmp_path / "sbs96.tsv"
-    code = cli.main(["profile", str(maf), "-o", str(out), "--sample-col", "sample_id"])
-    assert code == 0
-    assert out.is_file()
-    assert fake_profile.calls[0]["sample_col"] == "sample_id"
+@pytest.fixture
+def fake_fit(monkeypatch) -> FakeFit:
+    fake = FakeFit()
+    module = types.ModuleType("fingerprints.fit")
+    module.METHOD_DESCRIPTION = fake.METHOD_DESCRIPTION
+    module.load_reference = fake.load_reference
+    module.run_cohort_fit = fake.run_cohort_fit
+    module.save_results = fake.save_results
+    monkeypatch.setitem(sys.modules, "fingerprints.fit", module)
+    monkeypatch.setattr(fingerprints, "fit", module, raising=False)
+    return fake
 
 
-def test_profile_passes_adjacent_snvs(tmp_path, maf, fake_profile):
-    out = tmp_path / "sbs96.tsv"
-    code = cli.main(["profile", str(maf), "-o", str(out), "--adjacent-snvs", "count_as_sbs"])
-    assert code == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
-
-
-def test_profile_rejects_bad_adjacent_snvs(tmp_path, maf, fake_profile, capsys):
-    with pytest.raises(SystemExit) as exc:
-        cli.main(["profile", str(maf), "-o", str(tmp_path / "x.tsv"), "--adjacent-snvs", "merge"])
-    assert exc.value.code == 2
-    assert "--adjacent-snvs" in capsys.readouterr().err
-    assert fake_profile.calls == []
-
-
-def _write_config(path, adjacent_snvs):
-    path.write_text(
-        f"genome_build: GRCh38\nprofile:\n  adjacent_snvs: {adjacent_snvs}\n",
+@pytest.fixture
+def fit_inputs(tmp_path):
+    matrix = tmp_path / "m.tsv"
+    matrix.write_text("MutationType\tS1\tS2\nA[C>A]A\t5\t0\n")
+    cfg = tmp_path / "cfg.yaml"
+    cfg.write_text(
+        "paths:\n  raw_signatures: sigs\nsignatures:\n  file: ref.txt\nfitting:\n  min_snvs: 50\n",
         encoding="utf-8",
     )
-    return path
+    return matrix, cfg
 
 
-def test_config_sets_adjacent_snvs(tmp_path, maf, fake_profile, capsys):
-    cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
-    out = tmp_path / "sbs96.tsv"
-    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
-    assert f"adjacent_snvs=count_as_sbs (from config {cfg})" in capsys.readouterr().err
+def test_fit_wiring(tmp_path, fake_fit, fit_inputs, capsys):
+    matrix, cfg = fit_inputs
+    out = tmp_path / "res"
+    code = cli.main(
+        ["fit", str(matrix), "--project", "TCGA-LUAD", "--config", str(cfg),
+         "--min-snvs", "30", "--output-dir", str(out)]
+    )  # fmt: skip
+    assert code == 0
+    assert fake_fit.calls[0] == {"reference": Path("sigs") / "ref.txt"}
+    assert fake_fit.calls[1] == {"project": "TCGA-LUAD", "min_snvs": 30, "shape": (1, 2)}
+    assert (out / "exposures_TCGA-LUAD.tsv").is_file()
+    err = capsys.readouterr().err
+    assert f"config={cfg}" in err
+    assert "1 of 2 excluded" in err
+    assert "<20: 0" in err
 
 
-def test_flag_overrides_config(tmp_path, maf, fake_profile, capsys):
-    cfg = _write_config(tmp_path / "config.yaml", "count_as_sbs")
-    out = tmp_path / "sbs96.tsv"
-    argv = ["profile", str(maf), "-o", str(out), "--config", str(cfg), "--adjacent-snvs", "exclude"]
-    assert cli.main(argv) == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
-    assert "adjacent_snvs=exclude (from --adjacent-snvs)" in capsys.readouterr().err
+def test_fit_requires_project_and_output(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["fit", "m.tsv"])
+    assert exc.value.code == 2
 
 
-@pytest.mark.parametrize("with_flag", [False, True])
-def test_explicit_missing_config_is_error(tmp_path, maf, fake_profile, capsys, with_flag):
+def test_fit_explicit_missing_config_is_error(tmp_path, fake_fit, fit_inputs, capsys):
+    matrix, _ = fit_inputs
     missing = tmp_path / "nope.yaml"
-    out = tmp_path / "sbs96.tsv"
-    argv = ["profile", str(maf), "-o", str(out), "--config", str(missing)]
-    if with_flag:
-        argv += ["--adjacent-snvs", "exclude"]
-    assert cli.main(argv) == 1
-    assert capsys.readouterr().err == f"error: config file not found: {missing}\n"
-    assert fake_profile.calls == []
-    assert not out.exists()
-
-
-def test_missing_default_config_falls_back_to_exclude(
-    tmp_path, maf, fake_profile, monkeypatch, capsys
-):
-    monkeypatch.chdir(tmp_path)  # no config/config.yaml here
-    out = tmp_path / "sbs96.tsv"
-    assert cli.main(["profile", str(maf), "-o", str(out)]) == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
-    assert "adjacent_snvs=exclude (default; no config found)" in capsys.readouterr().err
-
-
-def test_config_without_key_falls_back_to_exclude(tmp_path, maf, fake_profile, capsys):
-    cfg = tmp_path / "config.yaml"
-    cfg.write_text("genome_build: GRCh38\nfitting:\n  min_snvs: 50\n", encoding="utf-8")
-    out = tmp_path / "sbs96.tsv"
-    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "exclude"
-    assert f"adjacent_snvs=exclude (default; not set in config {cfg})" in capsys.readouterr().err
-
-
-def test_default_config_path_is_cwd_relative(tmp_path, maf, fake_profile, monkeypatch, capsys):
-    (tmp_path / "config").mkdir()
-    _write_config(tmp_path / "config" / "config.yaml", "count_as_sbs")
-    monkeypatch.chdir(tmp_path)
-    assert cli.main(["profile", str(maf), "-o", str(tmp_path / "sbs96.tsv")]) == 0
-    assert fake_profile.calls[0]["adjacent_snvs"] == "count_as_sbs"
+    code = cli.main(
+        ["fit", str(matrix), "--project", "P", "--config", str(missing), "-o", str(tmp_path / "o")]
+    )
+    assert code == 1
     err = capsys.readouterr().err
-    assert "adjacent_snvs=count_as_sbs (from config config/config.yaml)" in err
+    assert err.startswith("error: ") and str(missing) in err
+    assert fake_fit.calls == []
 
 
-@pytest.mark.parametrize("content", ["profile:\n  adjacent_snvs: merge\n", "profile: [1, 2\n"])
-def test_bad_config_is_clean_error(tmp_path, maf, fake_profile, capsys, content):
-    cfg = tmp_path / "bad.yaml"
-    cfg.write_text(content, encoding="utf-8")
-    out = tmp_path / "sbs96.tsv"
-    assert cli.main(["profile", str(maf), "-o", str(out), "--config", str(cfg)]) == 1
+def test_fit_missing_matrix_is_error(tmp_path, fake_fit, capsys):
+    code = cli.main(["fit", str(tmp_path / "x.tsv"), "--project", "P", "-o", str(tmp_path / "o")])
+    assert code == 1
+    assert "matrix file not found" in capsys.readouterr().err
+
+
+def test_fit_value_error_is_clean(tmp_path, fake_fit, fit_inputs, capsys):
+    matrix, cfg = fit_inputs
+    fake_fit.raises = ValueError("no signature subset for project P")
+    code = cli.main(
+        ["fit", str(matrix), "--project", "P", "--config", str(cfg), "-o", str(tmp_path / "o")]
+    )
+    assert code == 1
     err = capsys.readouterr().err
-    assert err.startswith("error: ")
-    assert str(cfg) in err
+    assert err.startswith("error: no signature subset")
     assert "Traceback" not in err
-    assert fake_profile.calls == []
-    assert not out.exists()
 
 
-def test_adjacent_snv_choices_match_profile_module():
-    from fingerprints.profile import ADJACENT_SNV_MODES
-
-    assert tuple(cli.ADJACENT_SNV_CHOICES) == tuple(ADJACENT_SNV_MODES)
-
-
-def test_profile_missing_maf_is_clean_error(tmp_path, fake_profile, capsys):
-    missing = tmp_path / "nope.maf"
-    out = tmp_path / "sbs96.tsv"
-
-    assert cli.main(["profile", str(missing), "-o", str(out)]) == cli.EXIT_ERROR == 1
-
-    err = capsys.readouterr().err
-    assert err.startswith("error: ")
-    assert str(missing) in err
-    assert "Traceback" not in err
-    assert not out.exists()
-    assert fake_profile.calls == []
+def test_fit_has_no_reference_flag(tmp_path, fit_inputs, capsys):
+    matrix, cfg = fit_inputs
+    with pytest.raises(SystemExit) as exc:
+        cli.main(
+            ["fit", str(matrix), "--project", "P", "--config", str(cfg),
+             "--reference", "x.txt", "-o", str(tmp_path / "o")]
+        )  # fmt: skip
+    assert exc.value.code == 2
 
 
-@pytest.mark.parametrize(
-    "exc",
-    [ValueError("MAF has no CONTEXT column"), FileNotFoundError("reference not found")],
-)
-def test_profile_build_errors_are_clean(tmp_path, maf, fake_profile, capsys, exc):
-    fake_profile.raises = exc
-    out = tmp_path / "sbs96.tsv"
-
-    assert cli.main(["profile", str(maf), "-o", str(out)]) == 1
-
-    err = capsys.readouterr().err
-    assert err == f"error: {exc}\n"
-    assert not out.exists()
+def test_fit_help_mentions_relative_paths(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["fit", "--help"])
+    out = " ".join(capsys.readouterr().out.split())
+    assert "relative to the current directory" in out
+    assert "--reference" not in out

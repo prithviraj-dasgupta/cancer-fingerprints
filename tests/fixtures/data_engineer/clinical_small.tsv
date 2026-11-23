@@ -1,0 +1,11 @@
+case_id	case_submitter_id	project	tobacco_smoking_status	pack_years_smoked	tobacco_status_conflict
+c1	TCGA-AA-0001	TCGA-LUAD	Lifelong Non-smoker		False
+c2	TCGA-AA-0002	TCGA-LUAD	Current smoker	40	False
+c3	TCGA-AA-0003	TCGA-LUAD	CURRENT REFORMED SMOKER FOR > 15 YRS	20.5	False
+c4	TCGA-AA-0004	TCGA-LUAD	current reformed smoker for < or = 15 yrs	30	False
+c5	TCGA-AA-0005	TCGA-LUAD	Current Reformed Smoker, Duration Not Specified		False
+c6	TCGA-AA-0006	TCGA-LUAD	Not Reported		False
+c7	TCGA-AA-0007	TCGA-LUAD	Unknown		False
+c8	TCGA-AA-0008	TCGA-LUAD			False
+c9	TCGA-AA-0009	TCGA-LUAD	Current smoker	10	True
+c10	TCGA-AA-0010	TCGA-LUAD	Something New		False
