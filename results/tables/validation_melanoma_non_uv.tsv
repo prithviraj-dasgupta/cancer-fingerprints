@@ -1,0 +1,23 @@
+barcode	case_id	sample_type_code	summed_sbs7a_d	top_fitted_signature	top_signature_fraction	total_snvs	cosine	primary_diagnosis	primary_site	tissue_or_organ_of_origin	morphology
+TCGA-EB-A4OY-01A-11D-A25O-08	6e2d8818-b377-45f5-97f4-f905de22c487	01	0.0192045	SBS5	0.920153	58	0.57179	Malignant melanoma, NOS	Skin	Skin, NOS	8720/3
+TCGA-ER-A42H-01A-11D-A24R-08	ea3c0988-17c7-4eb0-a1a6-cef1e0865384	01	0.050994716999999995	SBS5	0.420942	60	0.883338	Malignant melanoma, NOS	Anus and anal canal	Skin, NOS	8720/3
+TCGA-D3-A1Q1-06A-21D-A196-08	8c54fcfd-999f-43c5-b31f-26d006f5fff3	06	0.0576402	SBS5	0.779592	50	0.70427	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-ER-A3EV-06A-11D-A20D-08	e35be832-6972-4677-b985-02e90d51141a	06	0.08930010000000001	SBS5	0.694614	83	0.782695	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-GN-A4U9-06A-11D-A32N-08	ab7eb3ec-bd87-4e49-9010-b51b17148f7c	06	0.09510600050000001	SBS5	0.749918	70	0.697222	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-ER-A2NB-01A-12D-A196-08	bda2f09a-82c4-40ec-90e8-0bf63916a5c7	01	0.10171447	SBS5	0.741543	63	0.741551	Malignant melanoma, NOS	Skin	Skin, NOS	8720/3
+TCGA-EE-A184-06A-11D-A196-08	3a8cfea5-1dcd-4dbb-bbd9-5bb602c54922	06	0.10559235	SBS38	0.886994	313	0.96587	Malignant melanoma, NOS	Skin	Skin, NOS	8720/3
+TCGA-RP-A6K9-06A-41D-A34U-08	5359d381-e7f2-4155-a559-7da9cda42ed9	06	0.13318	SBS5	0.511052	56	0.772922	Malignant melanoma, NOS	Bones, joints and articular cartilage of other and unspecified sites	Skin, NOS	8720/3
+TCGA-YG-AA3P-06A-11D-A38G-08	f1713c39-26b8-4667-a08b-f8cf6d2b8e13	06	0.1493042	SBS5	0.638474	78	0.752116	Malignant melanoma, NOS	Connective, subcutaneous and other soft tissues	Skin, NOS	8720/3
+TCGA-D9-A4Z5-01A-11D-A25O-08	a4e5a8ba-dbb2-4ee9-8ab3-cc5bab152cc2	01	0.1577895	SBS38	0.400751	70	0.954277	Malignant melanoma, NOS	Nasal cavity and middle ear	Skin, NOS	8720/3
+TCGA-EB-A5SH-06A-11D-A30X-08	aa597e8b-7813-4837-b778-4dafe3b091bb	06	0.1786609	SBS5	0.482197	93	0.836903	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-FR-A8YD-06A-11D-A372-08	2897a728-ec7b-4321-b0fe-3575b7c6ee39	06	0.1865602	SBS5	0.728539	104	0.803472	Malignant melanoma, NOS	Bronchus and lung	Skin, NOS	8720/3
+TCGA-FS-A1ZJ-06A-12D-A197-08	2f0661e5-5006-481e-9b40-7b1ec96eaa3c	06	0.1928681	SBS5	0.578736	63	0.647713	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-D3-A3BZ-06A-12D-A196-08	c3d4caa5-eebc-4276-b1e1-ab9494867b10	06	0.2010913	SBS5	0.749901	56	0.507076	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-ER-A19B-06A-11D-A196-08	f7368803-c545-4407-9a14-2220560a8f80	06	0.204498	SBS5	0.795502	119	0.808087	Malignant melanoma, NOS	Connective, subcutaneous and other soft tissues	Skin, NOS	8720/3
+TCGA-FW-A3I3-06A-11D-A21A-08	436a0116-eada-4b8f-aafe-29eb7f3241c4	06	0.2226449	SBS5	0.382487	59	0.774796	Malignant melanoma, NOS	Vagina	Skin, NOS	8720/3
+TCGA-EB-A44R-06A-41D-A25O-08	5c091729-7b87-4046-bfa4-41c26c32837a	06	0.2259205	SBS5	0.353176	59	0.840838	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-ER-A3ET-06A-11D-A20D-08	4afa82f8-b317-4763-808c-c944ca6661d3	06	0.2547564	SBS5	0.62411	91	0.75422	Malignant melanoma, NOS	Connective, subcutaneous and other soft tissues	Skin, NOS	8720/3
+TCGA-ER-A19T-01A-11D-A19A-08	b85b14d7-3b5a-4800-af12-622ec03b9fe5	01	0.26171943	SBS5	0.624045	57	0.729514	Acral lentiginous melanoma, malignant	Skin	Skin, NOS	8744/3
+TCGA-EB-A42Y-01A-12D-A24R-08	ef7bc188-6aec-467e-801a-ab2109a28104	01	0.2800126	SBS5	0.534227	65	0.770233	Malignant melanoma, NOS	Skin	Skin, NOS	8720/3
+TCGA-EE-A2M7-06A-11D-A197-08	7b4bcf0e-ec55-489b-870f-a4360a6bea2f	06	0.3238526	SBS5	0.452766	70	0.903272	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3
+TCGA-D3-A8GD-06A-11D-A372-08	74dc56e9-0076-458b-a12c-d50d7f057c47	06	0.36998489999999995	SBS5	0.501404	106	0.852756	Malignant melanoma, NOS	Lymph nodes	Skin, NOS	8720/3

@@ -1,0 +1,7 @@
+analysis	cohort	comparison	label	setting	min_snvs	min_cosine	group1	group2	n1	n2	median1	iqr1	median2	iqr2	effect_name	effect	ci_low	ci_high	rank_biserial	p	min	max	median_cosine1	median_cosine2	notes
+lung_never_smoker_sbs4	LUAD	share of lifelong never-smokers with SBS4 fraction > 0.25	descriptive	primary	50		never		33		0.110284	0.00864-0.441			proportion (Wilson 95% CI)	0.333333	0.197502	0.503921			0	0.669309	0.843057		11/33. cut 0.25 is a descriptive listing aid, not a test
+lung_never_smoker_sbs4	LUAD	SBS4 fraction in lifelong never-smokers: upper quartile (Q3)	descriptive	primary	50		never		33						upper quartile (Q3)	0.440986									
+lung_never_smoker_sbs4	LUAD	SBS4 fraction in lifelong never-smokers: maximum	descriptive	primary	50		never		33						maximum	0.669309									
+lung_never_smoker_sbs4	LUSC	share of lifelong never-smokers with SBS4 fraction > 0.25	descriptive	primary	50		never		14		0.259359	0.1191-0.3899			proportion (Wilson 95% CI)	0.571429	0.325906	0.786192			0	0.623921	0.917749		8/14. cut 0.25 is a descriptive listing aid, not a test
+lung_never_smoker_sbs4	LUSC	SBS4 fraction in lifelong never-smokers: upper quartile (Q3)	descriptive	primary	50		never		14						upper quartile (Q3)	0.389931									
+lung_never_smoker_sbs4	LUSC	SBS4 fraction in lifelong never-smokers: maximum	descriptive	primary	50		never		14						maximum	0.623921									

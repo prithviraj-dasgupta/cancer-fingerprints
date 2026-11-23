@@ -195,6 +195,11 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
   cancer. *Nature* 578:94–101.
 - COSMIC: Sondka Z. et al. (2024) *Nucleic Acids Res* 52(D1):D1210–D1217.
 - SigProfilerAssignment: Díaz-Gay M. et al. (2023) *Bioinformatics* 39(12):btad756.
+- Never-smoker lung cancer context (added 2026-11-23): Zhang T. et al. (2021) Genomic and
+  evolutionary classification of lung cancer in never smokers. *Nat Genet* 53(9):1348–1359,
+  doi:10.1038/s41588-021-00920-0, PMID 34493867 (verified on PubMed by Prithviraj). Its abstract
+  says no strong tobacco smoking signatures were detected in never-smoker lung cancers, even with
+  second-hand smoke exposure.
 - *Where:* README.
 
 ## Earlier decisions (Phase 1 build)
@@ -210,3 +215,36 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
 - The bundled v3.4 exome file is copied into gitignored `data/` and checked against a sha256
   pinned in `config/`.
 - COSMIC files are never committed.
+
+## 2026-11-23: Phase 2 review answers
+
+### D9. Phase 2 review answers (Prithviraj)
+Decided after the validation results were first seen. They add reporting and extra tests; no
+pre-specified primary analysis or number changes.
+- **(a) Primary threshold.** Keep the pre-specified >= 50 SNV filter as the headline. The 20 and
+  100 SNV results are shown in the same table as sensitivity analyses. The LUAD result holds
+  across thresholds (AUC 0.72-0.88). Never switch the headline to the better-looking number after
+  seeing results.
+- **(b) Never-smokers with SBS4.** README wording: a minority of reported never-smokers show
+  tobacco-like SBS4 exposure; possible reasons include misreported smoking history, second-hand
+  smoke, or overlap between SBS4 and similar signatures; the analysis cannot tell these apart.
+  Zhang et al. 2021 (D8) is cited as context only.
+- **(c) Pack-years.** No pack-years dose-response is expected from the fraction: an exposure
+  fraction is compositional and pack-years are self-reported and noisy. An extra secondary test is
+  added: Spearman of the SBS4 mutation COUNT (NNLS-attributed exposure) vs pack-years in
+  ever-smokers (LUAD, LUSC), same filters and CI method, shown beside the fraction version. The count scales
+  with total mutational burden, so it may partly track burden; it is secondary, has no multiplicity
+  correction, and was added after the fraction result was seen (at Prithviraj's request).
+- **(d) Low summed MMR in MSS.** Likely SBS1/SBS6 overlap plus the noise floor of NNLS refitting,
+  not real mismatch-repair deficiency.
+- **(e) READ MSI.** A READ MSI share of 5.8% is expected (MSI is rarer in rectal than colon
+  cancer). Report colon and rectum prevalence separately (the 10-20% check applies to colon
+  only). Keep MSI tumours with low summed MMR in the analysis and list them in a supplementary
+  table (listing cut 0.25, fixed in advance; a listing aid, not a test).
+- **(f) Non-UV melanomas.** Flag, do not exclude: summed SBS7a-d fraction <= 0.5. Show primary
+  site / histology fields where the clinical data has them.
+- **(g) Confirmed.** The "consistent with" wording rule (AUC 95% CI excludes 0.5 in the expected
+  direction), the 0.05 materiality threshold for the D5 check (on the median paired difference),
+  and the van Elteren stratified test for the pooled lung model.
+- *Where:* `src/fingerprints/validate.py`, `scripts/run_validation.py`,
+  `results/validation_summary.md`, `results/tables/validation_*.tsv`.

@@ -54,11 +54,18 @@ def matrix_totals(processed: Path, project: str, sfx: str) -> pd.Series:
 
 
 def load_cohort(
-    results: Path, processed: Path, project: str, sfx: str, clin: pd.DataFrame
+    results: Path,
+    processed: Path,
+    project: str,
+    sfx: str,
+    clin: pd.DataFrame,
+    counts: bool = False,
 ) -> pd.DataFrame:
     """Fit fractions + QC + clinical; chosen cases missing from the fit table must have <20 SNVs."""
     tab = results / "tables"
-    frac = read_tsv(tab / f"exposures_{project}{sfx}_all20_fractions.tsv", index_col=0)
+    # counts=True reads the NNLS-attributed exposure counts instead of the fractions
+    kind = "" if counts else "_fractions"
+    frac = read_tsv(tab / f"exposures_{project}{sfx}_all20{kind}.tsv", index_col=0)
     qc = read_tsv(tab / f"fit_qc_{project}{sfx}_all20.tsv", index_col=0)
     totals = matrix_totals(processed, project, sfx)
     out = v.assemble_cohort(frac, qc, clin, totals)
@@ -86,6 +93,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--results", type=Path, default=Path("results"))
     ap.add_argument("--processed", type=Path, default=Path("data/processed"))
+    ap.add_argument(
+        "--raw-clinical",
+        type=Path,
+        default=Path("data/raw/clinical"),
+        help="downloaded GDC clinical tables (<project>/clinical.tsv), for melanoma histology/site",
+    )
     args = ap.parse_args(argv)
     res, proc = args.results, args.processed
     tabdir, figdir = res / "tables", res / "figures"
@@ -105,7 +118,12 @@ def main(argv: list[str] | None = None) -> int:
     for r in dose_without:
         r["comparison"] += "; fit without SBS18"
         r["label"] = "sensitivity"
-    tables["lung_dose_response"] = v.to_table(dose_with + dose_without)
+    lung_counts = {k: load_cohort(res, proc, p, "", clin[p], counts=True) for k, p in LUNG.items()}
+    dose_count = v.lung_dose_response(lung_counts, v.SETTINGS, measure="mutation count")
+    for r in dose_count:
+        r["comparison"] += "; fit with SBS18"
+    tables["lung_dose_response"] = v.to_table(dose_with + dose_without + dose_count)
+    tables["lung_never_smoker_sbs4"] = v.to_table(v.lung_never_smoker_sbs4(lung))
     tables["lung_by_smoking_group"] = v.to_table(v.lung_group_descriptives(lung))
 
     # ---------------- B. melanoma ----------------
@@ -148,6 +166,38 @@ def main(argv: list[str] | None = None) -> int:
         r["label"] = "sensitivity"
     tables["colorectal_mmr_noSBS18"] = v.to_table(nb)
 
+    raw_skcm = args.raw_clinical / SKCM / "clinical.tsv"
+    extra_clin = None
+    if raw_skcm.is_file():
+        extra_clin = pd.read_csv(raw_skcm, sep="\t", dtype=str).drop_duplicates("case_id")
+        extra_clin = extra_clin.set_index("case_id")
+    non_uv = v.melanoma_non_uv_listing(skcm, SKCM_SIGS, extra_clin)
+    analysed = v.apply_filters(skcm, v.PRIMARY.min_snvs)
+    analysed_extra = pd.DataFrame(index=analysed.index)
+    for col in v.SKCM_CLINICAL_EXTRA:
+        if extra_clin is not None and col in extra_clin.columns:
+            analysed_extra[col] = extra_clin[col].reindex(analysed["case_id"]).to_numpy()
+    fields = [c for c in ("primary_diagnosis", "primary_site") if c in analysed_extra.columns]
+    non_uv_fields = v.non_uv_field_counts(non_uv, analysed_extra, fields)
+    skcm_note = (
+        "Subtype not available in downloaded clinical fields: only histology "
+        "(`primary_diagnosis`, `morphology`) and the GDC `primary_site` / "
+        "`tissue_or_organ_of_origin` are present. There is no acral/mucosal/uveal field and no "
+        "genomic subtype (BRAF/NRAS/NF1) field. `primary_site` for SKCM largely reflects the "
+        "sampled (often metastatic) site and should not be read as the site of the primary "
+        "tumour."
+        if extra_clin is not None
+        else "Subtype not available in downloaded clinical fields (raw clinical table not found)."
+    )
+    low_mmr = v.msi_low_mmr_listing(crc)
+    tables_listing = {"colorectal_msi_low_mmr": low_mmr, "melanoma_non_uv": non_uv}
+    extras = {
+        "msi_low_mmr": low_mmr,
+        "melanoma_non_uv": non_uv,
+        "non_uv_fields": non_uv_fields,
+        "skcm_fields_note": skcm_note,
+    }
+
     flow_parts = []
     for k, p in LUNG.items():
         qc = read_tsv(tabdir / f"fit_qc_{p}_all20.tsv", index_col=0)
@@ -177,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         ]
     )
     tables_extra["colorectal_borderline"] = borderline
+    tables_extra.update(tables_listing)
     for name, df in tables_extra.items():
         tabdir.mkdir(parents=True, exist_ok=True)
         df.to_csv(tabdir / f"validation_{name}.tsv", sep="\t", index=False)
@@ -228,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
 
     drops_path = tabdir / "profile_drops_summary.tsv"
     drops = read_tsv(drops_path) if drops_path.is_file() else None
-    text = v.build_summary(tables, flow, drops, borderline)
+    text = v.build_summary(tables, flow, drops, borderline, extras)
     v.write_markdown(res / "validation_summary.md", text)
     print(f"wrote {len(tables)} tables, 5 figures and summary under {res}", file=sys.stderr)
     return 0

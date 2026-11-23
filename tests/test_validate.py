@@ -549,3 +549,129 @@ def test_run_validation_script_is_importable():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert callable(mod.main)
+
+
+def test_count_dose_response_recovers_known_relationship():
+    rng = np.random.default_rng(5)
+    t = lung_table()
+    ever = t.smoking_code == "2"
+    py = t.loc[ever, "pack_years_smoked"].to_numpy()
+    t["SBS4"] = 0.0  # as a count table: SBS4 column holds NNLS-attributed counts
+    t.loc[ever, "SBS4"] = 5 * py + rng.normal(0, 2, ever.sum())  # strictly increasing in trend
+    rows = v.lung_dose_response({"LUAD": t}, v.SETTINGS, measure="mutation count")
+    assert {r["analysis"] for r in rows} == {"lung_sbs4_count_dose_response"}
+    assert rows[0]["comparison"] == "SBS4 mutation count vs pack_years_smoked, ever-smokers"
+    assert rows[0]["label"] == "secondary" and rows[1]["label"] == "sensitivity"
+    assert rows[0]["effect"] > 0.95 and rows[0]["n1"] == 60 and rows[0]["p"] < 1e-10
+    assert rows[0]["ci_low"] <= rows[0]["effect"] <= rows[0]["ci_high"] + 1e-9
+    # default measure keeps the pre-specified analysis name and text
+    frac = v.lung_dose_response({"LUAD": lung_table()})[0]
+    assert frac["analysis"] == "lung_sbs4_dose_response"
+    assert frac["comparison"] == "SBS4 fraction vs pack_years_smoked, ever-smokers"
+
+
+def test_msi_low_mmr_listing_boundaries_and_columns():
+    t = crc_table()
+    t.loc["t1", "SBS44"], t.loc["t2", "SBS44"] = 0.25, 0.2499  # others get 0
+    t.loc[["t1", "t2"], ["SBS1"]] = 0.5
+    t.loc["t3", "SBS44"] = 0.1
+    t.loc["t3", v.SNV_COL] = 49  # below the primary SNV filter: not listed
+    t.loc["t50", "SBS44"] = 0.05  # an MSS tumour: never listed
+    t = v.add_mmr_columns(t.drop(columns=["mmr_sum", "msi_group", "borderline", "total_snvs"]))
+    out = v.msi_low_mmr_listing(t)
+    assert "t2" in set(out.barcode) and "t1" not in set(out.barcode)  # < cut, equal excluded
+    assert "t3" not in set(out.barcode) and "t50" not in set(out.barcode)
+    assert set(out.msi_status) == {"MSI"} and out.summed_mmr_fraction.max() < v.MSI_LOW_MMR_CUT
+    assert out.summed_mmr_fraction.is_monotonic_increasing
+    assert {"project", "barcode", "msi_score", "msi_borderline", "total_snvs",
+            "pole_like_fraction_sbs10a_10b_28", "cosine"} <= set(out.columns)  # fmt: skip
+    assert v.MSI_LOW_MMR_CUT == 0.25
+
+
+def test_melanoma_non_uv_listing_boundary_and_fields():
+    t = mel_table()
+    t["case_id"] = ["c_a", "c_b", "c_c"]
+    t["uv_sbs7a_d"] = [0.5, 0.5000001, 0.1]  # a: exactly at the boundary (listed)
+    sigs = ["SBS1", "SBS5", "SBS7a", "SBS7b", "SBS7c", "SBS7d", "SBS38"]
+    extra = pd.DataFrame(
+        {"primary_diagnosis": ["Acral lentiginous melanoma, malignant", "NOS"]},
+        index=pd.Index(["c_a", "c_c"], name="case_id"),
+    )
+    out = v.melanoma_non_uv_listing(t, sigs, extra)
+    assert out.barcode.tolist() == ["c", "a"]  # sorted by summed fraction; b (0.5000001) excluded
+    assert out.set_index("barcode").loc["a", "primary_diagnosis"].startswith("Acral")
+    assert out.set_index("barcode").loc["a", "primary_site"] == "not available"  # absent field
+    assert out.set_index("barcode").loc["c", "top_fitted_signature"] == "SBS5"
+    t.loc["a", v.SNV_COL] = 49
+    assert "a" not in set(v.melanoma_non_uv_listing(t, sigs).barcode)  # primary filter applies
+    fields = v.non_uv_field_counts(out, extra.reindex(["c_a", "c_b", "c_c"]).assign(
+        primary_diagnosis=lambda d: d.primary_diagnosis), ["primary_diagnosis"])  # fmt: skip
+    assert fields.all_analysed_n.sum() == 3
+
+
+def test_never_smoker_sbs4_rows():
+    t = lung_table()
+    vals = np.linspace(0, 0.6, 40)
+    vals[10] = 0.25  # exactly at the cut: must not be counted (strictly greater)
+    t.loc[t.smoking_code == "1", "SBS4"] = vals
+    rows = v.to_table(v.lung_never_smoker_sbs4({"LUAD": t}))
+    share = rows[rows.comparison.str.startswith("share of")].iloc[0]
+    expected = int((vals > 0.25).sum())
+    assert share.n1 == 40 and round(share.effect * 40) == expected
+    assert expected == int((vals >= 0.25).sum()) - 1
+    assert rows[rows.effect_name == "maximum"].iloc[0].effect == pytest.approx(0.6)
+    assert (rows.label == "descriptive").all()
+
+
+def test_summary_contains_new_sentences_and_counts():
+    tables, flow = _synthetic_tables()
+    luad = lung_table(seed=1)
+    luad_count = luad.assign(SBS4=luad.SBS4 * 100)
+    cohorts = {"LUAD": luad, "LUSC": lung_table(30, 50, 0.2, seed=2, project="LUSC")}
+    dose = v.lung_dose_response(cohorts, v.SETTINGS)
+    dose += v.lung_dose_response({"LUAD": luad_count}, v.SETTINGS, measure="mutation count")
+    for r in dose:
+        r["comparison"] += "; fit with SBS18"
+    tables["lung_dose_response"] = v.to_table(dose)
+    tables["lung_never_smoker_sbs4"] = v.to_table(v.lung_never_smoker_sbs4(cohorts))
+    crc = crc_table()
+    hyper = v.msi_fraction_by_case(
+        {"TCGA-COAD": crc[crc.project == "TCGA-COAD"], "TCGA-READ": crc[crc.project == "TCGA-READ"]}
+    )
+    tables["colorectal_hypermutation"] = v.to_table(hyper)
+    low = v.msi_low_mmr_listing(crc.assign(mmr_sum=0.1))
+    mel = mel_table()
+    mel["case_id"] = ["a", "b", "c"]
+    nu = v.melanoma_non_uv_listing(
+        mel.assign(uv_sbs7a_d=[0.4, 0.9, 0.9]), ["SBS1", "SBS5", "SBS7a"]
+    )
+    extras = {
+        "msi_low_mmr": low,
+        "melanoma_non_uv": nu,
+        "skcm_fields_note": "Subtype not available",
+    }
+    text = v.build_summary(tables, flow, None, None, extras)
+    for needle in (
+        "A minority of reported never-smokers show tobacco-like SBS4 exposure. Possible reasons "
+        "include misreported smoking history, second-hand smoke, or overlap between SBS4 and "
+        "similar signatures; this analysis cannot tell these apart.",
+        "Zhang",
+        "Genomic and evolutionary classification of lung cancer in never smokers",
+        "PMID 34493867",
+        "Pack-years vs SBS4 mutation count",
+        "compositional",
+        "self-reported",
+        "colon (COAD)",
+        "rectum (READ)",
+        "applies to colon only",
+        "no explanation is asserted",
+        f"{len(low)} MSI-labelled tumours",
+        "not UV-dominated",
+        "Subtype not available",
+        "melanomas (>= 50 SNVs) are not UV-dominated",
+        "## Supplementary listings",
+        "## References",
+    ):
+        assert needle in text, needle
+    # synthetic melanoma table: summed SBS7a-d = 0.8, 0.2, 0.0 -> 1 of 3 on both measures
+    assert "in 1/3 tumours (33.3%) and above 50% in 1/3 (33.3%)" in text

@@ -45,6 +45,14 @@ MMR_SIGS = ["SBS6", "SBS14", "SBS15", "SBS20", "SBS26", "SBS44"]
 BORDERLINE_LOW = 0.15
 BORDERLINE_HIGH = 0.25
 MATERIAL_CHANGE = 0.05  # reporting convention for the D5 check: 5 percentage points
+#: Listing aids (fixed in advance, data-independent; not tests): MSI tumours below this summed
+#: MMR fraction are listed in a supplementary table; "non-UV-dominated" melanomas have a summed
+#: SBS7a-d fraction <= NON_UV_CUT (the complement of the secondary ">50%" measure); a
+#: never-smoker is listed as having "tobacco-like" SBS4 when its SBS4 fraction exceeds
+#: NEVER_SMOKER_SBS4_CUT.
+MSI_LOW_MMR_CUT = 0.25
+NON_UV_CUT = 0.5
+NEVER_SMOKER_SBS4_CUT = 0.25
 
 #: Row schema shared by all validation tables.
 TABLE_COLUMNS = [
@@ -768,9 +776,20 @@ def lung_pooled(
 
 
 def lung_dose_response(
-    cohorts: dict[str, pd.DataFrame], settings: Sequence[Setting] = (PRIMARY,)
+    cohorts: dict[str, pd.DataFrame],
+    settings: Sequence[Setting] = (PRIMARY,),
+    measure: str = "fraction",
 ) -> list[dict[str, object]]:
-    """Spearman SBS4 fraction vs pack-years within ever-smokers (D3), per cohort."""
+    """Spearman SBS4 vs pack-years within ever-smokers (D3), per cohort.
+
+    ``measure`` is 'fraction' (the pre-specified version) or 'mutation count'. For the count,
+    pass tables whose ``SBS4`` column holds the NNLS-attributed SBS4 exposure (a mutation count,
+    from ``exposures_<P>_all20.tsv``), joined to the same QC and clinical columns, so the same
+    filters apply. The count version is an added secondary test (D9).
+    """
+    analysis = (
+        "lung_sbs4_dose_response" if measure == "fraction" else "lung_sbs4_count_dose_response"
+    )
     rows = []
     for cohort, table in cohorts.items():
         ever = table[table["smoking_ever_group"] == "ever"].copy()
@@ -778,9 +797,9 @@ def lung_dose_response(
         for setting in settings:
             rows.append(
                 spearman_row(
-                    "lung_sbs4_dose_response",
+                    analysis,
                     cohort,
-                    "SBS4 fraction vs pack_years_smoked, ever-smokers",
+                    f"SBS4 {measure} vs pack_years_smoked, ever-smokers",
                     "secondary" if setting.name == PRIMARY.name else "sensitivity",
                     setting,
                     ever,
@@ -814,6 +833,52 @@ def lung_group_descriptives(
                     group_label=str(grp),
                 )
             )
+    return rows
+
+
+def lung_never_smoker_sbs4(
+    cohorts: dict[str, pd.DataFrame], setting: Setting = PRIMARY
+) -> list[dict[str, object]]:
+    """Descriptive: SBS4 fraction among lifelong never-smokers (D9).
+
+    Rows per cohort: share with SBS4 fraction above ``NEVER_SMOKER_SBS4_CUT`` (a listing aid,
+    not a test; Wilson CI), the upper quartile and the maximum.
+    """
+    rows = []
+    for cohort, table in cohorts.items():
+        f = apply_filters(table, setting.min_snvs, setting.min_cosine)
+        nv = f[f["smoking_primary_group"] == "never"].copy()
+        nv["above_cut"] = (nv[SBS4] > NEVER_SMOKER_SBS4_CUT).astype(float)
+        d = describe(nv[SBS4])
+        r = _prop_row(
+            "lung_never_smoker_sbs4",
+            cohort,
+            f"share of lifelong never-smokers with SBS4 fraction > {NEVER_SMOKER_SBS4_CUT}",
+            "descriptive",
+            setting,
+            nv,
+            "above_cut",
+            f"cut {NEVER_SMOKER_SBS4_CUT} is a descriptive listing aid, not a test",
+        )
+        r["group1"] = "never"
+        r["median1"], r["iqr1"] = d["median"], _fmt_iqr(d)
+        r["min"], r["max"] = d["min"], d["max"]
+        rows.append(r)
+        for name, val in (("upper quartile (Q3)", d["q3"]), ("maximum", d["max"])):
+            q = _blank_row()
+            q.update(
+                analysis="lung_never_smoker_sbs4",
+                cohort=cohort,
+                comparison=f"SBS4 fraction in lifelong never-smokers: {name}",
+                label="descriptive",
+                setting=setting.name,
+                min_snvs=setting.min_snvs,
+                group1="never",
+                n1=d["n"],
+                effect_name=name,
+                effect=val,
+            )
+            rows.append(q)
     return rows
 
 
@@ -999,6 +1064,69 @@ def melanoma_adjacent_check(
         ),
     )
     return row
+
+
+SKCM_CLINICAL_EXTRA = [
+    "primary_diagnosis",
+    "primary_site",
+    "tissue_or_organ_of_origin",
+    "morphology",
+]
+
+
+def melanoma_non_uv_listing(
+    table: pd.DataFrame,
+    fitted_signatures: Sequence[str],
+    extra_clinical: pd.DataFrame | None = None,
+    setting: Setting = PRIMARY,
+    cut: float = NON_UV_CUT,
+) -> pd.DataFrame:
+    """Supplementary listing of non-UV-dominated melanomas (summed SBS7a-d <= ``cut``).
+
+    Flags tumours; nothing is excluded from any analysis. The boundary is inclusive (exactly
+    0.5 is listed), the complement of the '> 50%' measure. ``extra_clinical`` (indexed by
+    ``case_id``) supplies histology / site fields; fields it lacks are filled with
+    'not available'.
+    """
+    t = apply_filters(table, setting.min_snvs, setting.min_cosine)
+    t = t[t["uv_sbs7a_d"] <= cut]
+    sigs = list(fitted_signatures)
+    top = t[sigs].idxmax(axis=1) if len(t) else pd.Series(dtype=str)
+    out = pd.DataFrame(
+        {
+            "barcode": t.index,
+            "case_id": t["case_id"].to_numpy(),
+            "sample_type_code": t["sample_type_code"].astype(str).to_numpy(),
+            "summed_sbs7a_d": t["uv_sbs7a_d"].to_numpy(),
+            "top_fitted_signature": top.to_numpy(),
+            "top_signature_fraction": t[sigs].max(axis=1).to_numpy() if len(t) else [],
+            "total_snvs": t[SNV_COL].to_numpy(),
+            "cosine": t[COSINE_COL].to_numpy(),
+        }
+    )
+    for col in SKCM_CLINICAL_EXTRA:
+        if extra_clinical is not None and col in extra_clinical.columns:
+            vals = extra_clinical[col].reindex(out["case_id"]).to_numpy()
+            out[col] = pd.Series(vals).fillna("not reported").to_numpy()
+        else:
+            out[col] = "not available"
+    return out.sort_values("summed_sbs7a_d").reset_index(drop=True)
+
+
+def non_uv_field_counts(
+    non_uv: pd.DataFrame, all_tumours: pd.DataFrame, fields: Sequence[str]
+) -> pd.DataFrame:
+    """Value counts of clinical fields among non-UV melanomas vs all analysed SKCM tumours."""
+    rows = []
+    for f in fields:
+        if f not in all_tumours.columns:
+            continue
+        a = all_tumours[f].fillna("not reported").value_counts()
+        n = non_uv[f].value_counts() if f in non_uv.columns else pd.Series(dtype=int)
+        for val in a.index:
+            rows.append({"field": f, "value": val, "non_uv_n": int(n.get(val, 0)),
+                         "all_analysed_n": int(a[val])})  # fmt: skip
+    return pd.DataFrame(rows)
 
 
 # ---- model-free C>T check -------------------------------------------------------------
@@ -1307,6 +1435,34 @@ def sbs1_sbs6_overlap(table: pd.DataFrame, setting: Setting = PRIMARY) -> list[d
 
 
 POLE_SIGS = ["SBS10a", "SBS10b", "SBS28"]
+
+
+def msi_low_mmr_listing(
+    table: pd.DataFrame, setting: Setting = PRIMARY, cut: float = MSI_LOW_MMR_CUT
+) -> pd.DataFrame:
+    """Supplementary listing of MSI tumours with summed MMR fraction below ``cut``.
+
+    A listing aid with a fixed, data-independent cut (not a test, not an exclusion). Uses the
+    primary-setting tumours (>= 50 SNVs); a fraction exactly equal to the cut is not listed.
+    No explanation is asserted for why these tumours score low.
+    """
+    t = apply_filters(table[table["msi_group"] == "MSI"], setting.min_snvs, setting.min_cosine)
+    t = t[t["mmr_sum"] < cut]
+    out = pd.DataFrame(
+        {
+            "project": t["project"],
+            "barcode": t.index,
+            "case_id": t["case_id"],
+            "msi_status": t["msi_status"],
+            "msi_score": t["msi_score"],
+            "msi_borderline": t["borderline"],
+            "total_snvs": t["total_snvs"],
+            "summed_mmr_fraction": t["mmr_sum"],
+            "pole_like_fraction_sbs10a_10b_28": sum_signatures(t, POLE_SIGS),
+            "cosine": t[COSINE_COL],
+        }
+    )
+    return out.sort_values("summed_mmr_fraction").reset_index(drop=True)
 
 
 def pole_like_counts(table: pd.DataFrame, setting: Setting = PRIMARY) -> list[dict[str, object]]:
@@ -1677,8 +1833,11 @@ def _direction(r: pd.Series) -> str:
     return "consistent with" if r["ci_low"] > 0.5 else "not consistent with"
 
 
-def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
+def headline_lines(
+    t: dict[str, pd.DataFrame], extras: dict[str, object] | None = None
+) -> list[str]:
     """Rule-based headline bullets from the tables; only 'consistent with' wording."""
+    extras = extras or {}
     out = []
     r = _pick(t["lung_sbs4"], cohort="LUAD", label="primary")
     if r is not None:
@@ -1690,6 +1849,7 @@ def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
             f"{'excludes' if r['ci_low'] > 0.5 else 'does not exclude'} 0.5 in the direction "
             f"'smokers higher', which is {_direction(r)} higher SBS4 attribution in smokers."
         )
+    out += _never_smoker_lines(t)
     r = _pick(t["melanoma_uv"], analysis="melanoma_uv_fraction", label="primary")
     if r is not None:
         lg = _pick(
@@ -1709,8 +1869,12 @@ def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
         out.append(
             f"- **Melanoma (SKCM), primary.** Summed SBS7a-d fraction: n={int(r['n1'])}, median "
             f"{r['median1']:.3f} (IQR {r['iqr1']}); summed SBS7a-d is the single largest "
-            f"component in {lg['effect'] * 100:.1f}% of tumours and above 50% in "
-            f"{gt['effect'] * 100:.1f}% (these two proportions are secondary measures). "
+            f"component in {round(lg['effect'] * lg['n1'])}/{int(lg['n1'])} tumours "
+            f"({lg['effect'] * 100:.1f}%) and above 50% in "
+            f"{round(gt['effect'] * gt['n1'])}/{int(gt['n1'])} ({gt['effect'] * 100:.1f}%); "
+            "these two proportions are secondary measures; the counts coincide because a tumour "
+            "above 50% is necessarily the largest component and here every largest-component "
+            "tumour is also above 50%. "
             f"This is {word} UV-signature dominance (rule: median summed fraction > 0.5)."
         )
     r = _pick(t["colorectal_mmr"], cohort="COAD+READ", label="primary")
@@ -1724,23 +1888,9 @@ def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
             f"'MSI higher', which is {_direction(r)} higher "
             "mismatch-repair signature attribution in MSI-labelled tumours."
         )
+    out += _msi_prevalence_lines(t)
     out += ["", "Key limiting and negative findings (same tables):", ""]
-    dr = t["lung_dose_response"]
-    for c in ("LUAD", "LUSC"):
-        sel = dr[(dr["cohort"] == c) & (dr["setting"] == "primary")]
-        sel = sel[sel["comparison"].str.endswith("fit with SBS18")]
-        if len(sel):
-            r = sel.iloc[0]
-            word = (
-                "not consistent with a monotonic dose-response"
-                if r["ci_low"] <= 0 <= r["ci_high"]
-                else "consistent with a monotonic association"
-            )
-            out.append(
-                f"- Pack-years vs SBS4 fraction in ever-smokers, {c}: Spearman rho "
-                f"{r['effect']:.2f} (95% CI {r['ci_low']:.2f} to {r['ci_high']:.2f}), "
-                f"p={_pfmt(r['p'])}, n={int(r['n1'])}: {word}."
-            )
+    out += _dose_response_lines(t["lung_dose_response"])
     sel = t["lung_sbs4"]
     sel = sel[
         (sel["cohort"] == "LUSC")
@@ -1767,7 +1917,8 @@ def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
             f"(IQR {r['iqr2']}); {gt0.iloc[0]['effect'] * 100:.0f}% of MSS tumours have SBS6 > 0; "
             f"SBS1 vs SBS6 fraction in MSS Spearman rho {rho.iloc[0]['effect']:.2f}. "
             "This pattern is consistent with exposure trading between similar signatures "
-            "(SBS1/SBS6), so some MMR attribution in MSS tumours may not be real."
+            "(SBS1/SBS6) and the noise floor of NNLS refitting, so some MMR attribution in MSS "
+            "tumours may not reflect a real mismatch-repair defect."
         )
     r = _pick(t["colorectal_mmr"], cohort="READ", setting="primary", label="secondary")
     if r is not None:
@@ -1785,6 +1936,133 @@ def headline_lines(t: dict[str, pd.DataFrame]) -> list[str]:
             f"(n={int(r['n1'])}); the median difference is "
             f"{'above' if big else 'below'} the {MATERIAL_CHANGE} reporting threshold "
             f"(the threshold applies to the median, not to individual tumours)."
+        )
+    out += _extras_lines(extras)
+    return out
+
+
+def _rho_phrase(r: pd.Series, count: bool = False) -> str:
+    positive = (
+        "association with SBS4 count, which also tracks total burden"
+        if count
+        else "consistent with a monotonic association"
+    )
+    word = (
+        "not consistent with a monotonic dose-response"
+        if r["ci_low"] <= 0 <= r["ci_high"]
+        else positive
+    )
+    return (
+        f"Spearman rho {r['effect']:.2f} (95% CI {r['ci_low']:.2f} to {r['ci_high']:.2f}), "
+        f"p={_pfmt(r['p'])}, n={int(r['n1'])}: {word}"
+    )
+
+
+def _dose_response_lines(dr: pd.DataFrame) -> list[str]:
+    """Pack-years vs SBS4 fraction (pre-specified) and vs SBS4 mutation count (added, D9)."""
+    out = []
+    ok = dr["comparison"].str.endswith("fit with SBS18") & (dr["setting"] == "primary")
+    for c in ("LUAD", "LUSC"):
+        fr = dr[ok & (dr["cohort"] == c) & (dr["analysis"] == "lung_sbs4_dose_response")]
+        ct = dr[ok & (dr["cohort"] == c) & (dr["analysis"] == "lung_sbs4_count_dose_response")]
+        if len(fr):
+            out.append(
+                f"- Pack-years vs SBS4 fraction in ever-smokers, {c}: {_rho_phrase(fr.iloc[0])}."
+            )
+        if len(ct):
+            out.append(
+                f"- Pack-years vs SBS4 mutation count (NNLS-attributed, added secondary test), "
+                f"{c}: {_rho_phrase(ct.iloc[0], count=True)}."
+            )
+    if out:
+        out.append(
+            "- Context for the two dose-response tests: an exposure fraction is compositional "
+            "(the fractions sum to 1 across the fitted signatures, so it depends on every other "
+            "signature) and pack-years are self-reported and noisy, so a weak or absent "
+            "dose-response was not expected to be a sensitive test. The SBS4 count scales with "
+            "total mutational burden, so the count association may partly track burden. The "
+            "count test is an added secondary test with no multiplicity correction, and it was "
+            "added after the fraction result was seen (at Prithviraj's request)."
+        )
+    return out
+
+
+def _never_smoker_lines(t: dict[str, pd.DataFrame]) -> list[str]:
+    ns = t.get("lung_never_smoker_sbs4")
+    if ns is None:
+        return []
+    luad = ns[ns["cohort"] == "LUAD"]
+    share = luad[luad["comparison"].str.startswith("share of")]
+    q3 = luad[luad["effect_name"] == "upper quartile (Q3)"]
+    mx = luad[luad["effect_name"] == "maximum"]
+    if not (len(share) and len(q3) and len(mx)):
+        return []
+    r = share.iloc[0]
+    k = round(r["effect"] * r["n1"])
+    return [
+        "- A minority of reported never-smokers show tobacco-like SBS4 exposure. Possible reasons "
+        "include misreported smoking history, second-hand smoke, or overlap between SBS4 and "
+        "similar signatures; this analysis cannot tell these apart. In LUAD at >= 50 SNVs, "
+        f"{k}/{int(r['n1'])} lifelong never-smokers ({r['effect'] * 100:.0f}%, Wilson 95% CI "
+        f"{r['ci_low'] * 100:.0f}-{r['ci_high'] * 100:.0f}%) have SBS4 fraction > "
+        f"{NEVER_SMOKER_SBS4_CUT} (a descriptive listing aid, not a test); the upper quartile of "
+        f"their SBS4 fraction is {q3.iloc[0]['effect']:.2f} and the maximum "
+        f"{mx.iloc[0]['effect']:.2f}. Context: Zhang et al. 2021 (Nat Genet) report no strong "
+        "tobacco-smoking signatures in never-smoker lung cancers, even with second-hand smoke "
+        "exposure (see References)."
+    ]
+
+
+def _msi_prevalence_lines(t: dict[str, pd.DataFrame]) -> list[str]:
+    h = t.get("colorectal_hypermutation")
+    if h is None:
+        return []
+    h = h[h["analysis"] == "colorectal_msi_fraction_by_case"]
+    parts = {}
+    for _, r in h.iterrows():
+        k = int(r["n1"])
+        n = k + int(r["n2"])
+        parts[r["cohort"]] = (
+            f"{r['effect'] * 100:.1f}% ({k}/{n}; Wilson 95% CI "
+            f"{r['ci_low'] * 100:.1f}-{r['ci_high'] * 100:.1f}%)"
+        )
+    if not {"COAD", "READ"} <= set(parts):
+        return []
+    return [
+        f"- MSI prevalence by case among cases with an MSI call: colon (COAD) {parts['COAD']}; "
+        f"rectum (READ) {parts['READ']}. MSI is expected to be rarer in rectal than in colon "
+        "cancer, so a lower READ share is expected. The 10-20% sanity check (TCGA Network 2012, "
+        "Nature 487:330-337) applies to colon only."
+    ]
+
+
+def _extras_lines(extras: dict[str, object]) -> list[str]:
+    out = []
+    low = extras.get("msi_low_mmr")
+    if isinstance(low, pd.DataFrame):
+        if len(low):
+            out.append(
+                f"- {len(low)} MSI-labelled tumours (>= 50 SNVs) have summed MMR fraction below "
+                f"{MSI_LOW_MMR_CUT} (a fixed listing cut, not a test): MSI score "
+                f"{low['msi_score'].min():.3f}-{low['msi_score'].max():.3f}, total SNVs "
+                f"{int(low['total_snvs'].min())}-{int(low['total_snvs'].max())}, "
+                f"{int((low['pole_like_fraction_sbs10a_10b_28'] > 0.5).sum())} with SBS10a+10b+28 "
+                "> 0.5. They are kept in all analyses and listed in "
+                "validation_colorectal_msi_low_mmr.tsv. Low MMR in these may reflect MSIsensor2 "
+                "false calls, low mutation counts, or POLE-like/unfitted signatures; no "
+                "explanation is asserted."
+            )
+        else:
+            out.append(
+                f"- No MSI-labelled tumours (>= 50 SNVs) have summed MMR fraction below "
+                f"{MSI_LOW_MMR_CUT}."
+            )
+    nu = extras.get("melanoma_non_uv")
+    if isinstance(nu, pd.DataFrame):
+        out.append(
+            f"- {len(nu)} melanomas (>= 50 SNVs) are not UV-dominated (summed SBS7a-d <= "
+            f"{NON_UV_CUT}); they are flagged in validation_melanoma_non_uv.tsv and kept in all "
+            "analyses."
         )
     return out
 
@@ -1831,6 +2109,16 @@ def selection_section(t: dict[str, pd.DataFrame], flow: pd.DataFrame) -> list[st
                 f"| {nm} | {int(r['n1'])} | {int(r['n2'])} | {_ci(r, label=False)} | "
                 f"{_pfmt(r['p'])} | {r['median_cosine1']:.2f} / {r['median_cosine2']:.2f} |"
             )
+        aucs = [lt.loc[k, "effect"] for k, _ in names]
+        lows = [lt.loc[k, "ci_low"] for k, _ in names]
+        out += [
+            "",
+            f"Across the three thresholds the LUAD AUC ranges from {min(aucs):.2f} to "
+            f"{max(aucs):.2f} and every 95% CI lower bound is above 0.5 "
+            f"({'yes' if min(lows) > 0.5 else 'NO'}). The >= 50 SNV row is the primary; the "
+            ">= 20 and >= 100 rows are sensitivity analyses shown in the same table, and the "
+            "headline is never switched to whichever threshold looks better.",
+        ]
         p = lt.loc["primary"]
         out += [
             "",
@@ -1843,6 +2131,64 @@ def selection_section(t: dict[str, pd.DataFrame], flow: pd.DataFrame) -> list[st
     out += ["", "Cohort flow (chosen cases to analysed tumours), all cohorts:", ""]
     cols = list(flow.columns)
     out.append(table_to_markdown(flow, cols))
+    return out
+
+
+REFERENCES = """\
+- Alexandrov LB et al. (2020) The repertoire of mutational signatures in human cancer. Nature
+  578:94-101.
+- The Cancer Genome Atlas Network (2012) Comprehensive molecular characterization of human colon
+  and rectal cancer. Nature 487:330-337.
+- Zhang T et al. (2021) Genomic and evolutionary classification of lung cancer in never smokers.
+  Nat Genet 53(9):1348-1359. doi:10.1038/s41588-021-00920-0. PMID 34493867. Its abstract reports
+  that no strong tobacco smoking signatures were detected in never-smoker lung cancers, even with
+  second-hand smoke exposure (context for the SBS4 overlap in never-smokers; not a result of
+  this analysis).
+"""
+
+
+def supplementary_section(extras: dict[str, object]) -> list[str]:
+    """Supplementary listings (flags only, nothing is excluded from any analysis)."""
+    out = ["## Supplementary listings", ""]
+    low = extras.get("msi_low_mmr")
+    if isinstance(low, pd.DataFrame):
+        out += [
+            f"### MSI tumours with summed MMR fraction < {MSI_LOW_MMR_CUT}",
+            "",
+            f"The cut {MSI_LOW_MMR_CUT} was fixed before looking at the data and is a listing aid, "
+            "not a test. Tumours with >= 50 SNVs only; MSI labels are bioinformatic. Count: "
+            f"{len(low)}. Low MMR in these may reflect MSIsensor2 false calls, low mutation "
+            "counts, or POLE-like/unfitted signatures; no explanation is asserted. Full list: "
+            "`results/tables/validation_colorectal_msi_low_mmr.tsv`.",
+            "",
+        ]
+        if len(low):
+            out += [table_to_markdown(low, list(low.columns)), ""]
+    nu = extras.get("melanoma_non_uv")
+    if isinstance(nu, pd.DataFrame):
+        out += [
+            f"### Melanomas that are not UV-dominated (summed SBS7a-d <= {NON_UV_CUT})",
+            "",
+            f"Count: {len(nu)} (this is the complement of the secondary '> 50%' measure; the "
+            "boundary is inclusive). Flagged, not excluded. Full list: "
+            "`results/tables/validation_melanoma_non_uv.tsv`.",
+            "",
+        ]
+        if len(nu):
+            cols = [c for c in nu.columns if c not in ("case_id",)]
+            out += [table_to_markdown(nu, cols), ""]
+        fc = extras.get("non_uv_fields")
+        if isinstance(fc, pd.DataFrame) and len(fc):
+            out += [
+                "Histology and site fields among non-UV melanomas vs all analysed SKCM tumours "
+                "(counts):",
+                "",
+                table_to_markdown(fc, list(fc.columns)),
+                "",
+            ]
+        note = extras.get("skcm_fields_note")
+        if note:
+            out += [str(note), ""]
     return out
 
 
@@ -1894,8 +2240,14 @@ def build_summary(
     flow: pd.DataFrame,
     drops: pd.DataFrame | None = None,
     borderline: pd.DataFrame | None = None,
+    extras: dict[str, object] | None = None,
 ) -> str:
-    """Assemble the whole Markdown summary from the tables."""
+    """Assemble the whole Markdown summary from the tables.
+
+    ``extras`` may hold ``msi_low_mmr`` and ``melanoma_non_uv`` (supplementary listings),
+    ``non_uv_fields`` (value counts) and ``skcm_fields_note``.
+    """
+    extras = extras or {}
     parts = [
         "# Validation summary",
         "",
@@ -1908,7 +2260,7 @@ def build_summary(
         "",
         "## Headline",
         "",
-        *headline_lines(tables),
+        *headline_lines(tables, extras),
         "",
         "## Cohort flow and the SNV filter",
         "",
@@ -1936,5 +2288,7 @@ def build_summary(
                 table_to_markdown(sub, SUMMARY_COLS),
                 "",
             ]
+    parts += supplementary_section(extras)
     parts += ["## Limitations and notes", "", limitations(drops)]
+    parts += ["## References", "", REFERENCES]
     return "\n".join(parts)
