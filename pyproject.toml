@@ -18,6 +18,10 @@ dependencies = [
 # COSMIC SBS v3.4 reference signatures come from the copy bundled in SigProfilerAssignment.
 # Heavy; not installed in CI.
 signatures = ["SigProfilerAssignment==1.1.5"]
+app = [
+    "plotly>=7.1.0",
+    "streamlit>=1.67.0",
+]
 
 [project.scripts]
 fingerprints = "fingerprints.cli:main"

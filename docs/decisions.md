@@ -208,7 +208,7 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
 - `profile.py` reads context from the GDC MAF `CONTEXT` column, so CI and the app need no
   multi-GB genome. It does not use SigProfilerMatrixGenerator.
 - A MAF without `CONTEXT` raises a clear error.
-- VCF input needs a GRCh38 context lookup; that is planned for the app phase.
+- VCF input needs a GRCh38 context lookup; not yet implemented (the app currently accepts MAF only).
 
 ### D0b. COSMIC signatures come from SigProfilerAssignment, not the COSMIC website
 - The COSMIC website is never scraped or automated.
