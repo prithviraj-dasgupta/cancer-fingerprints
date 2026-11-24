@@ -92,13 +92,23 @@ combined: AUC 0.97 (95% CI 0.95-0.99), p=1.4e-41. MSI tumours also carry far mor
 
 Caveats:
 
-- MSS tumours are not at zero (median 0.09). This is most likely SBS1/SBS6 overlap plus the noise
-  floor of NNLS refitting, not real mismatch-repair deficiency.
+- MSS tumours are not at zero (median 0.09). Low summed MMR exposure in MSS tumours is consistent
+  with SBS1/SBS6 similarity and NNLS noise rather than true MMR deficiency. This is inferred from
+  the data (for example, SBS1 and SBS6 fractions are negatively correlated in MSS tumours, Spearman
+  rho -0.30), not demonstrated.
 - MSI was 17.5% of colon cases with a call (75/428) and 5.8% of rectal cases (9/155), as expected,
   since MSI is rarer in rectal cancer. Rectum alone has only 6 MSI tumours at 50+ SNVs, so its
   AUC (0.94, 95% CI 0.82-1.00) is imprecise.
 - Seven MSI-labelled tumours have summed MMR below 0.25. They are kept and listed in
   `results/tables/validation_colorectal_msi_low_mmr.tsv`; no explanation is asserted.
+
+### More figures
+
+The mean 96-channel SBS spectrum of each cohort (tumours with at least 50 SNVs). Melanoma is
+dominated by C>T at dipyrimidines, lung shows a broad C>A component, and colorectal shows C>T
+peaks at CpG contexts.
+
+![Mean SBS96 spectrum per cohort](results/figures/fig1_mean_spectra.png)
 
 ## Method
 
@@ -219,7 +229,9 @@ uv run pytest -m "not network"   # what CI runs
   (400 SNVs sampled from a planted mix of SBS7a/b/d, SBS1 and SBS5, at random positions, fixed
   random seed), made by `scripts/make_example_maf.py`. It contains no real patient data and no COSMIC
   matrices; regenerating it needs the locally downloaded COSMIC file.
-- This repository does not yet have a software licence file.
+- **Code licence.** The code in this repository is released under the [MIT licence](LICENSE)
+  (copyright 2026 Prithviraj Dasgupta). The MIT licence covers the code only. It does not cover
+  TCGA/GDC data or the COSMIC signatures, which keep their own terms (above).
 
 ## Citations
 
@@ -230,8 +242,9 @@ uv run pytest -m "not network"   # what CI runs
 3. Díaz-Gay M. et al. (2023) Assigning mutational signatures to individual samples and individual
    somatic mutations with SigProfilerAssignment. *Bioinformatics* 39(12):btad756.
    doi:10.1093/bioinformatics/btad756.
-4. Saini N. et al. (2016) *PLoS Genetics*, doi:10.1371/journal.pgen.1006385, cited by COSMIC for the
-   UV signatures SBS7c and SBS7d.
+4. Saini N., Roberts S.A., Klimczak L.J. et al. (2016) The impact of environmental and endogenous
+   damage on somatic mutation load in human skin fibroblasts. *PLoS Genet* 12(10):e1006385.
+   doi:10.1371/journal.pgen.1006385 (cited by COSMIC for the UV signatures SBS7c and SBS7d).
 5. Zhang T. et al. (2021) Genomic and evolutionary classification of lung cancer in never smokers.
    *Nat Genet* 53(9):1348-1359. doi:10.1038/s41588-021-00920-0 (context for never-smokers with SBS4).
 6. The Cancer Genome Atlas Network (2012) Comprehensive molecular characterization of human colon
