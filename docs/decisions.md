@@ -160,8 +160,10 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
    - MMR validation: test the **summed MMR exposure (SBS6+14+15+20+26+44)** in MSI vs MSS.
    - Report the SBS1/SBS6 overlap as a limitation.
 5. **Plain-English summaries** group signatures, while tables keep the individual ones:
-   - SBS1 + SBS5 + SBS40a: "background / ageing-related processes (SBS40a: cause unknown)";
+   - SBS1 + SBS5 + SBS40a: "background / ageing-related processes (partly unknown cause)";
    - SBS7a–d + SBS38: "UV light (SBS38 proposed)".
+   - Phase 3 (2026-11-24): the report and app warn when the fit cosine is below **0.90** (poor fit,
+     check the cancer type). This is separate from the 0.8 validation sensitivity cut above.
 6. **APOBEC (SBS2/SBS13)** is not added to melanoma or colorectal: they fall below the 20%
    rule, which is applied consistently.
 7. **Prevalences** are figure estimates. Label them approximate and cite the figure (ED Fig. 5).
@@ -208,7 +210,7 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
 - `profile.py` reads context from the GDC MAF `CONTEXT` column, so CI and the app need no
   multi-GB genome. It does not use SigProfilerMatrixGenerator.
 - A MAF without `CONTEXT` raises a clear error.
-- VCF input needs a GRCh38 context lookup; that is planned for the app phase.
+- VCF input needs a GRCh38 context lookup; not yet implemented (the app currently accepts MAF only).
 
 ### D0b. COSMIC signatures come from SigProfilerAssignment, not the COSMIC website
 - The COSMIC website is never scraped or automated.

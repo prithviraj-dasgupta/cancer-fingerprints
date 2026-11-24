@@ -343,7 +343,7 @@ def annotate_sbs96(
             f"MAF is missing the required {context_col!r} column (plus-strand reference "
             "sequence centred on the variant, as in GDC masked somatic MAFs). MAFs without "
             f"{context_col!r} and VCF input need a reference-genome context lookup, which "
-            "is not supported yet (planned for the app phase)."
+            "is not supported yet (planned for a later release)."
         )
 
     # Fresh RangeIndex so positional bookkeeping below is safe for any input index.

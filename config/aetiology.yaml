@@ -1,0 +1,253 @@
+# Cancer Fingerprints: signature -> plain-English aetiology mapping (the ONE place for it).
+#
+# Wording was checked against the COSMIC v3.4 page of each signature (`cosmic_page`) and revised
+# after Prithviraj's review. Where a COSMIC page labels an aetiology more weakly than the status
+# given here (SBS7a/b 'known', SBS38 'proposed'), the reviewer's instruction was kept. COSMIC's
+# pages put every aetiology under a generic 'Proposed aetiology' heading, so the
+# known/proposed split below is a reviewed judgement, not a COSMIC field.
+#
+# COSMIC licence: `cosmic_aetiology` is a SHORT PARAPHRASE, not a copy of COSMIC text
+# (docs/decisions.md D1; config.yaml signatures.licence). Do not paste COSMIC wording here.
+#
+# status values (follow COSMIC's own confidence, never stronger):
+#   known    - COSMIC gives a specific aetiology that the literature supports well
+#   proposed - COSMIC labels the aetiology as proposed / possible / indirect
+#   unknown  - COSMIC says the aetiology is unknown
+#
+# Group placement follows docs/decisions.md D7 (cohort signature subsets):
+#   - SBS14 and SBS20 go in `mmr`, not `pole`: COSMIC links them to a polymerase mutation
+#     (POLE for SBS14, POLD1 for SBS20) occurring TOGETHER WITH mismatch-repair deficiency, and
+#     the D7 colorectal MMR validation sums SBS6+14+15+20+26+44. The sentence for the group
+#     says so.
+#   - SBS28 goes in its own `unknown_other` group, not `pole`: its cause is unknown. It is
+#     fitted because it is co-active with SBS10a/b in the POLE cluster (ED Fig. 6a), but
+#     putting it under "polymerase epsilon" would assert a cause COSMIC does not.
+#   - SBS5 and SBS40a stay in `background` (D7). Their cause is unknown; the report text says
+#     so explicitly and also reports the unknown-cause share separately.
+
+meta:
+  cosmic_version: "3.4"
+  cosmic_url: https://cancer.sanger.ac.uk/signatures/sbs/
+  citation:
+    - >-
+      Alexandrov LB, Kim J, Haradhvala NJ, et al. The repertoire of mutational signatures in
+      human cancer. Nature 578, 94-101 (2020). doi:10.1038/s41586-020-1943-3
+    - >-
+      COSMIC Mutational Signatures v3.4 (SBS), https://cancer.sanger.ac.uk/signatures/sbs/
+      (Sondka et al. 2024, doi:10.1093/nar/gkad986)
+
+# Display order of groups in reports.
+group_order: [tobacco, uv, apobec, mmr, pole, ros, background, unknown_other]
+
+groups:
+  tobacco:
+    label: tobacco smoking
+    sentence: >-
+      This pattern is consistent with exposure to tobacco smoke mutagens. It does not show
+      that the person smoked.
+  uv:
+    label: UV light
+    sentence: >-
+      This pattern is consistent with damage from ultraviolet light, as seen in skin cancers.
+      SBS38 is only a proposed indirect effect of UV light.
+  apobec:
+    label: APOBEC enzyme activity
+    sentence: >-
+      This pattern most likely reflects activity of APOBEC cytidine deaminase enzymes, which
+      can edit DNA during infection responses or when dysregulated.
+  mmr:
+    label: DNA mismatch-repair defect
+    sentence: >-
+      This pattern is consistent with a defect in DNA mismatch repair (as in MSI/hypermutated
+      tumours). SBS14 and SBS20 are linked by COSMIC to defective mismatch repair together with
+      POLE (SBS14) or POLD1 (SBS20) mutations.
+  pole:
+    label: DNA polymerase epsilon proofreading defect
+    sentence: >-
+      This pattern is consistent with a defect in the proofreading (exonuclease) domain of
+      DNA polymerase epsilon, usually giving a very high mutation burden.
+  ros:
+    label: oxidative (reactive oxygen) DNA damage, proposed
+    sentence: >-
+      This pattern may reflect damage from reactive oxygen species. The aetiology is only
+      proposed, and the pattern can overlap with other C>A signatures such as tobacco.
+  background:
+    label: background / ageing-related processes (partly unknown cause)
+    sentence: >-
+      These are clock-like or flat patterns that build up with age in most tumours. SBS1 is
+      attributed to spontaneous deamination of methylated cytosine. SBS5 and SBS40a have
+      unknown cause, so this share should not be read as one confirmed process.
+  unknown_other:
+    label: unknown cause
+    sentence: >-
+      The cause of this pattern is unknown. In these cohorts it tends to appear alongside
+      polymerase epsilon signatures, but that does not establish a cause.
+
+signatures:
+  SBS1:
+    group: background
+    plain_english: spontaneous ageing-related change to methylated cytosine (clock-like)
+    status: known
+    cosmic_aetiology: >-
+      Attributed to deamination of 5-methylcytosine (spontaneous or enzymatic); clock-like,
+      with mutation numbers rising with age.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs1/
+    citation: COSMIC v3.4 SBS1 (https://cancer.sanger.ac.uk/signatures/sbs/sbs1/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS2:
+    group: apobec
+    plain_english: APOBEC enzyme activity
+    status: known
+    cosmic_aetiology: Linked to activity of APOBEC family cytidine deaminases.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs2/
+    citation: COSMIC v3.4 SBS2 (https://cancer.sanger.ac.uk/signatures/sbs/sbs2/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS4:
+    group: tobacco
+    plain_english: tobacco smoking
+    status: known
+    cosmic_aetiology: >-
+      Linked to tobacco smoking, with C>A changes typical of tobacco mutagens; strongest in
+      lung and other smoking-related cancers.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs4/
+    citation: COSMIC v3.4 SBS4 (https://cancer.sanger.ac.uk/signatures/sbs/sbs4/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS5:
+    group: background
+    plain_english: unknown cause, clock-like (builds up with age)
+    status: unknown
+    cosmic_aetiology: COSMIC lists the aetiology as unknown; the signature is clock-like.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs5/
+    citation: COSMIC v3.4 SBS5 (https://cancer.sanger.ac.uk/signatures/sbs/sbs5/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS6:
+    group: mmr
+    plain_english: DNA mismatch-repair defect
+    status: known
+    cosmic_aetiology: Linked to defective DNA mismatch repair.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs6/
+    citation: COSMIC v3.4 SBS6 (https://cancer.sanger.ac.uk/signatures/sbs/sbs6/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS7a:
+    group: uv
+    plain_english: UV light
+    status: known
+    cosmic_aetiology: >-
+      Linked to ultraviolet light exposure; C>T changes at dipyrimidines, mainly in skin
+      cancers.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7a/
+    citation: COSMIC v3.4 SBS7a (https://cancer.sanger.ac.uk/signatures/sbs/sbs7a/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS7b:
+    group: uv
+    plain_english: UV light
+    status: known
+    cosmic_aetiology: Linked to ultraviolet light exposure; a related SBS7 component.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7b/
+    citation: COSMIC v3.4 SBS7b (https://cancer.sanger.ac.uk/signatures/sbs/sbs7b/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS7c:
+    group: uv
+    plain_english: UV light
+    status: known
+    cosmic_aetiology: Linked to ultraviolet light exposure; a smaller UV component.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7c/
+    citation: COSMIC v3.4 SBS7c (https://cancer.sanger.ac.uk/signatures/sbs/sbs7c/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3; Saini et al. 2016 PLoS Genetics doi:10.1371/journal.pgen.1006385 (as listed on the COSMIC page)
+  SBS7d:
+    group: uv
+    plain_english: UV light
+    status: known
+    cosmic_aetiology: Linked to ultraviolet light exposure; a smaller UV component.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7d/
+    citation: COSMIC v3.4 SBS7d (https://cancer.sanger.ac.uk/signatures/sbs/sbs7d/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3; Saini et al. 2016 PLoS Genetics doi:10.1371/journal.pgen.1006385 (as listed on the COSMIC page)
+  SBS10a:
+    group: pole
+    plain_english: DNA polymerase epsilon proofreading defect
+    status: known
+    cosmic_aetiology: >-
+      POLE exonuclease domain mutations; typically seen in tumours with very high mutation
+      counts.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs10a/
+    citation: COSMIC v3.4 SBS10a (https://cancer.sanger.ac.uk/signatures/sbs/sbs10a/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS10b:
+    group: pole
+    plain_english: DNA polymerase epsilon proofreading defect
+    status: known
+    cosmic_aetiology: >-
+      POLE exonuclease domain mutations; typically seen in tumours with very high mutation
+      counts.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs10b/
+    citation: COSMIC v3.4 SBS10b (https://cancer.sanger.ac.uk/signatures/sbs/sbs10b/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS13:
+    group: apobec
+    plain_english: APOBEC enzyme activity
+    status: known
+    cosmic_aetiology: Linked to activity of APOBEC family cytidine deaminases.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs13/
+    citation: COSMIC v3.4 SBS13 (https://cancer.sanger.ac.uk/signatures/sbs/sbs13/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS14:
+    group: mmr
+    plain_english: defective mismatch repair together with POLE mutations
+    status: known
+    cosmic_aetiology: >-
+      Defective mismatch repair together with POLE (SBS14) mutations; seen in very
+      high-burden tumours.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs14/
+    citation: COSMIC v3.4 SBS14 (https://cancer.sanger.ac.uk/signatures/sbs/sbs14/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS15:
+    group: mmr
+    plain_english: DNA mismatch-repair defect
+    status: known
+    cosmic_aetiology: Linked to defective DNA mismatch repair.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs15/
+    citation: COSMIC v3.4 SBS15 (https://cancer.sanger.ac.uk/signatures/sbs/sbs15/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS18:
+    group: ros
+    plain_english: proposed - damage by reactive oxygen species
+    status: proposed
+    cosmic_aetiology: >-
+      Proposed: damage by reactive oxygen species; not firmly established. Fitted
+      here partly to absorb non-tobacco C>A changes (docs/decisions.md D7).
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs18/
+    citation: COSMIC v3.4 SBS18 (https://cancer.sanger.ac.uk/signatures/sbs/sbs18/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS20:
+    group: mmr
+    plain_english: defective mismatch repair together with POLD1 mutations
+    status: known
+    cosmic_aetiology: >-
+      Defective mismatch repair together with POLD1 (SBS20) mutations.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs20/
+    citation: COSMIC v3.4 SBS20 (https://cancer.sanger.ac.uk/signatures/sbs/sbs20/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS26:
+    group: mmr
+    plain_english: DNA mismatch-repair defect
+    status: known
+    cosmic_aetiology: Linked to defective DNA mismatch repair.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs26/
+    citation: COSMIC v3.4 SBS26 (https://cancer.sanger.ac.uk/signatures/sbs/sbs26/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS28:
+    group: unknown_other
+    plain_english: cause unknown; often seen alongside SBS10a/b in POLE-mutant tumours
+    status: unknown
+    cosmic_aetiology: >-
+      Cause unknown; often seen alongside SBS10a/b in POLE-mutant tumours.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs28/
+    citation: COSMIC v3.4 SBS28 (https://cancer.sanger.ac.uk/signatures/sbs/sbs28/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS38:
+    group: uv
+    plain_english: proposed - indirect effect of UV light
+    status: proposed
+    cosmic_aetiology: >-
+      Proposed: indirect effect of UV light; found in melanoma alongside the SBS7
+      signatures. (COSMIC's own aetiology field for SBS38 reads unknown.)
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs38/
+    citation: COSMIC v3.4 SBS38 (https://cancer.sanger.ac.uk/signatures/sbs/sbs38/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
+  SBS40a:
+    group: background
+    plain_english: unknown cause, flat pattern similar to SBS5
+    status: unknown
+    cosmic_aetiology: >-
+      COSMIC lists the aetiology as unknown; a flat pattern resembling SBS5 (SBS40 was split
+      into a, b and c in v3.4).
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs40a/
+    citation: COSMIC v3.4 SBS40a (https://cancer.sanger.ac.uk/signatures/sbs/sbs40a/)
+  SBS44:
+    group: mmr
+    plain_english: DNA mismatch-repair defect
+    status: known
+    cosmic_aetiology: Linked to defective DNA mismatch repair.
+    cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs44/
+    citation: COSMIC v3.4 SBS44 (https://cancer.sanger.ac.uk/signatures/sbs/sbs44/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
