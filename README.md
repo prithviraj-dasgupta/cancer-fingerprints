@@ -124,7 +124,13 @@ Tick "Use the bundled synthetic example" to try it without data (a simulated mel
 data). To use your own file, upload a MAF with a `CONTEXT` column (GDC masked somatic MAFs have
 one), choose lung, melanoma or colorectal, and read the spectrum, the likely causes, the
 plain-English summary and any warnings. VCF upload is not supported yet because it needs a GRCh38
-trinucleotide-context lookup. The app is for research and education only. The `app` extra
+trinucleotide-context lookup. The app is for research and education only.
+
+**Provenance of the example file.** `app/example/synthetic_melanoma.maf` was generated from COSMIC
+v3.4 signature profiles by `scripts/make_example_maf.py` (fixed random seed; 400 SNVs sampled from a
+planted mix of SBS7a/b/d, SBS1 and SBS5, at random positions). It is entirely synthetic, contains no
+real patient data and no COSMIC matrices, and the script needs the locally downloaded COSMIC file to
+regenerate it. The `app` extra
 (streamlit, plotly) is optional and not installed in CI; the app tests skip without it.
 
 Method and scope decisions are recorded in [docs/decisions.md](docs/decisions.md).

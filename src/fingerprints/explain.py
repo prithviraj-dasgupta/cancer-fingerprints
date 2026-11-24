@@ -22,6 +22,7 @@ import yaml
 __all__ = [
     "CANCER_TYPES",
     "DISCLAIMER",
+    "LOW_COSINE_THRESHOLD",
     "GROUP_ORDER",
     "AetiologyError",
     "Report",
@@ -51,7 +52,11 @@ STATUSES = ("known", "proposed", "unknown")
 
 HEADLINE_MIN_GROUP = 0.05  # groups below this go into "other small contributions"
 NOTE_MIN_SIGNATURE = 0.02  # proposed/unknown signatures above this get a status note
-LOW_COSINE = 0.8
+# Report/app fit-quality warning: reconstruction cosine below this means the selected cancer
+# type's signature subset fits the tumour poorly. NOTE: this is deliberately different from
+# fit.low_cosine_flag's 0.8, which is the pre-specified D7 validation sensitivity cut (a quality
+# filter for the smoker/MSI analyses); do not unify them.
+LOW_COSINE_THRESHOLD = 0.90
 DEFAULT_MIN_SNVS = 50
 
 DISCLAIMER = (
@@ -89,7 +94,7 @@ def load_aetiology(path: str | Path | None = None) -> dict[str, Any]:
         if not isinstance(g, dict) or not {"label", "sentence"} <= set(g):
             raise AetiologyError(f"Group '{gname}' needs 'label' and 'sentence' ({p})")
     for sig, entry in data["signatures"].items():
-        need = {"group", "plain_english", "status", "cosmic_aetiology", "citation"}
+        need = {"group", "plain_english", "status", "cosmic_aetiology", "citation", "cosmic_page"}
         if not isinstance(entry, dict) or not need <= set(entry):
             raise AetiologyError(f"Signature '{sig}' needs keys {sorted(need)} ({p})")
         if entry["status"] not in STATUSES:
@@ -190,6 +195,7 @@ def build_report(
     cosine: float | None = None,
     aetiology: dict[str, Any] | None = None,
     min_snvs: int = DEFAULT_MIN_SNVS,
+    low_cosine_threshold: float = LOW_COSINE_THRESHOLD,
 ) -> Report:
     """Build a hedged plain-English report from signature exposures.
 
@@ -212,12 +218,12 @@ def build_report(
             f"Low confidence: only {n_snvs} SNVs (fewer than {min_snvs}); with so few mutations "
             "the signature split is unreliable."
         )
-    if cosine is not None and not np.isnan(cosine) and cosine < LOW_COSINE:
+    has_cosine = cosine is not None and not np.isnan(cosine)
+    if has_cosine and cosine < low_cosine_threshold:
         low_conf = True
         warnings.append(
-            f"Low confidence: the fitted signatures reconstruct the tumour's profile poorly "
-            f"(cosine similarity {cosine:.2f}, below {LOW_COSINE}); a process outside the "
-            "fitted set may be present."
+            f"The selected cancer type's signatures fit this tumour poorly (cosine {cosine:.2f}, "
+            f"below {low_cosine_threshold:.2f}). Check that the cancer type is right."
         )
 
     total = float(exp.sum())
@@ -236,6 +242,8 @@ def build_report(
             "No signature received a non-zero exposure, so nothing can be said about the "
             "likely causes of these mutations."
         ]
+        if has_cosine:
+            report.lines.append(f"Fit quality: cosine similarity is {cosine:.2f}.")
         return report
 
     sig_frac = (exp / total)[lambda s: s > 0].sort_values(ascending=False)
@@ -264,7 +272,13 @@ def build_report(
         parts.append("other small contributions (each under 5%)")
     report.headline = "Most consistent with: " + ", ".join(parts)
 
-    lines = [
+    lines = []
+    if has_cosine:
+        lines.append(
+            f"Fit quality: cosine similarity between the observed and reconstructed profile is "
+            f"{cosine:.2f} (1.00 is a perfect reconstruction)."
+        )
+    lines += [
         "These percentages are the share of attributed mutations, not a measure of risk, and "
         "they may not add to exactly 100% because of rounding in the headline."
     ]
