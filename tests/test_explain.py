@@ -215,7 +215,7 @@ def test_mapping_status_and_groups_valid(aet):
         assert e["cosmic_page"] == f"https://cancer.sanger.ac.uk/signatures/sbs/{s.lower()}/", s
         assert e["cosmic_page"] in e["citation"], s
         has_2020 = "10.1038/s41586-020-1943-3" in e["citation"]
-        assert has_2020 is (s not in {"SBS40a", "SBS7c", "SBS7d"}), s
+        assert has_2020 is (s != "SBS40a"), s
     assert aet["groups"]["background"]["label"] == (
         "background / ageing-related processes (partly unknown cause)"
     )

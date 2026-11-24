@@ -145,14 +145,14 @@ signatures:
     status: known
     cosmic_aetiology: Linked to ultraviolet light exposure; a smaller UV component.
     cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7c/
-    citation: COSMIC v3.4 SBS7c (https://cancer.sanger.ac.uk/signatures/sbs/sbs7c/)
+    citation: COSMIC v3.4 SBS7c (https://cancer.sanger.ac.uk/signatures/sbs/sbs7c/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3; Saini et al. 2016 PLoS Genetics doi:10.1371/journal.pgen.1006385 (as listed on the COSMIC page)
   SBS7d:
     group: uv
     plain_english: UV light
     status: known
     cosmic_aetiology: Linked to ultraviolet light exposure; a smaller UV component.
     cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs7d/
-    citation: COSMIC v3.4 SBS7d (https://cancer.sanger.ac.uk/signatures/sbs/sbs7d/)
+    citation: COSMIC v3.4 SBS7d (https://cancer.sanger.ac.uk/signatures/sbs/sbs7d/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3; Saini et al. 2016 PLoS Genetics doi:10.1371/journal.pgen.1006385 (as listed on the COSMIC page)
   SBS10a:
     group: pole
     plain_english: DNA polymerase epsilon proofreading defect
@@ -220,11 +220,10 @@ signatures:
     citation: COSMIC v3.4 SBS26 (https://cancer.sanger.ac.uk/signatures/sbs/sbs26/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
   SBS28:
     group: unknown_other
-    plain_english: unknown cause (often seen alongside polymerase epsilon signatures)
+    plain_english: cause unknown; often seen alongside SBS10a/b in POLE-mutant tumours
     status: unknown
     cosmic_aetiology: >-
-      COSMIC lists the aetiology as unknown; it is found in tumours that also carry
-      POLE-type signatures.
+      Cause unknown; often seen alongside SBS10a/b in POLE-mutant tumours.
     cosmic_page: https://cancer.sanger.ac.uk/signatures/sbs/sbs28/
     citation: COSMIC v3.4 SBS28 (https://cancer.sanger.ac.uk/signatures/sbs/sbs28/); Alexandrov 2020 doi:10.1038/s41586-020-1943-3
   SBS38:
