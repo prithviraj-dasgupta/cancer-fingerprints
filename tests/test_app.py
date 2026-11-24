@@ -44,7 +44,9 @@ def test_example_runs_end_to_end(monkeypatch, fake_reference_file):
     assert not at.exception
     assert not at.error
     assert at.selectbox(key="cancer_type").value == "melanoma"
-    assert any("SYNTHETIC-0001" in s.value for s in at.subheader)
+    # One heading only: the report title, not a separate "Summary for ..." subheader.
+    assert not any("Summary for" in s.value for s in at.subheader)
+    assert any("Mutational signature summary for SYNTHETIC-0001" in m.value for m in at.markdown)
 
 
 def test_other_cancer_type_selectable(monkeypatch, fake_reference_file):

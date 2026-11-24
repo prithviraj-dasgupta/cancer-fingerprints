@@ -62,7 +62,6 @@ def _load_input():
 
 def _show(analysis: appcore.Analysis) -> None:
     report = analysis.report
-    st.subheader(f"Summary for {analysis.sample}")
     for message in analysis.warnings:
         st.warning(message)
     st.markdown(analysis.body_markdown())

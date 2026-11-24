@@ -110,6 +110,14 @@ peaks at CpG contexts.
 
 ![Mean SBS96 spectrum per cohort](results/figures/fig1_mean_spectra.png)
 
+Signature groups and individual exposures for the synthetic melanoma example:
+
+![App charts: signature groups (pie) and individual signatures (bars) for the synthetic melanoma example](docs/img/app-charts.png)
+
+SBS96 spectrum of the synthetic melanoma example (drawn by `scripts/make_app_spectrum.py`):
+
+![SBS96 spectrum of the synthetic melanoma example](docs/img/app-spectrum.png)
+
 ## Method
 
 Full decisions, with dates and reasons, are in [docs/decisions.md](docs/decisions.md).
