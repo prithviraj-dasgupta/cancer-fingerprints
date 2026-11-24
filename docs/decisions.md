@@ -202,6 +202,11 @@ al. 2020 (ED Fig. 5, Fig. 3, ED Fig. 6a).
   doi:10.1038/s41588-021-00920-0, PMID 34493867 (verified on PubMed by Prithviraj). Its abstract
   says no strong tobacco smoking signatures were detected in never-smoker lung cancers, even with
   second-hand smoke exposure.
+- UV signatures SBS7c/7d (added Phase 4): Saini N. et al. (2016) *PLoS Genetics*,
+  doi:10.1371/journal.pgen.1006385, as listed on the COSMIC SBS7c/7d pages. **Full reference
+  (title, volume, pages) not yet verified: Prithviraj to check on PubMed.**
+- Expected colon MSI/hypermutated fraction (see D4): The Cancer Genome Atlas Network (2012)
+  *Nature* 487:330–337.
 - *Where:* README.
 
 ## Earlier decisions (Phase 1 build)
