@@ -1,5 +1,7 @@
 # Cancer Fingerprints
 
+[![CI](https://github.com/prithviraj-dasgupta/cancer-fingerprints/actions/workflows/ci.yml/badge.svg)](https://github.com/prithviraj-dasgupta/cancer-fingerprints/actions/workflows/ci.yml)
+
 Reads a tumour's somatic mutations and explains, in plain English, what most likely caused them.
 
 ![The Cancer Fingerprints app showing a mutation spectrum, signature chart and plain-English summary](docs/img/app.png)
