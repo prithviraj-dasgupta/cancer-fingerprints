@@ -1,9 +1,9 @@
 {
   "name": "Cancer Fingerprints",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
-  "postCreateCommand": "pip install --user uv && uv sync --locked --extra app --extra signatures && uv run python scripts/download_signatures.py",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
   "postAttachCommand": {
-    "app": "uv run streamlit run app/streamlit_app.py --server.headless true --server.enableCORS false --server.enableXsrfProtection false"
+    "app": "uv run --no-sync streamlit run app/streamlit_app.py --server.headless true --server.enableCORS false --server.enableXsrfProtection false"
   },
   "forwardPorts": [8501],
   "portsAttributes": {
