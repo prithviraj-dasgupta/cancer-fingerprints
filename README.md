@@ -1,6 +1,7 @@
 # Cancer Fingerprints
 
 [![CI](https://github.com/prithviraj-dasgupta/cancer-fingerprints/actions/workflows/ci.yml/badge.svg)](https://github.com/prithviraj-dasgupta/cancer-fingerprints/actions/workflows/ci.yml)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/prithviraj-dasgupta/cancer-fingerprints?quickstart=1)
 
 Reads a tumour's somatic mutations and explains, in plain English, what most likely caused them.
 
@@ -205,7 +206,7 @@ uv run python scripts/run_fits.py --drop-signature SBS18 --projects TCGA-LUAD TC
 # 6. validate: tables, figures and results/validation_summary.md
 uv run python scripts/run_validation.py
 
-# 7. the app (local only)
+# 7. the app (runs on your machine)
 uv run streamlit run app/streamlit_app.py
 ```
 
@@ -216,8 +217,12 @@ To profile and fit a single MAF with the command-line tool, use `fingerprints pr
 
 In the app, tick "Use the bundled synthetic example" to try it without any data, or upload a MAF
 with a `CONTEXT` column (GDC masked somatic MAFs have one) and choose lung, melanoma or colorectal.
-The demo runs locally only: COSMIC's terms do not allow COSMIC data on a free-to-access platform,
-so there is no hosted version, and permission would have to be requested from COSMIC first (D1).
+There is no hosted version: COSMIC's terms do not allow COSMIC data on a free-to-access platform,
+and permission would have to be requested from COSMIC first (D1). To try the app without
+installing anything, click **Open in GitHub Codespaces** at the top. It builds your own private
+Codespace, installs the app, copies the COSMIC file from SigProfilerAssignment into that
+environment exactly as a local install does, and opens the app on port 8501 after about five
+minutes. Codespaces are free within GitHub's monthly allowance for personal accounts.
 
 Tests and lint:
 

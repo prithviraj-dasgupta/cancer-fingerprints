@@ -10,6 +10,9 @@ decisions are made by Prithviraj Dasgupta. Each entry says where it is (or will 
   public hosted demo for now**: the Streamlit app runs locally only, and the README shows
   screenshots or a GIF instead.
 - Prithviraj will ask COSMIC for permission before any hosting.
+- 2026-11-26: added a devcontainer and an "Open in GitHub Codespaces" button. Each visitor's
+  own Codespace installs SigProfilerAssignment and copies the COSMIC file itself, like a local
+  install, so nothing is hosted by this project. Streamlit Community Cloud was rejected for D1.
 - Fitting is described as **NNLS signature refitting** against the COSMIC reference, never as a
   trained ML model. COSMIC's terms also restrict using COSMIC data to train AI models.
 - *Where:* README, app (Phase 6).
