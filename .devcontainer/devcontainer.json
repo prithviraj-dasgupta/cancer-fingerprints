@@ -5,9 +5,25 @@
   "postAttachCommand": {
     "app": "uv run --no-sync streamlit run app/streamlit_app.py --server.headless true --server.enableCORS false --server.enableXsrfProtection false"
   },
-  "forwardPorts": [8501],
+  "forwardPorts": [
+    8501
+  ],
   "portsAttributes": {
-    "8501": { "label": "Cancer Fingerprints app", "onAutoForward": "openPreview" }
+    "8501": {
+      "label": "Cancer Fingerprints app",
+      "onAutoForward": "openBrowser"
+    }
   },
-  "customizations": { "codespaces": { "openFiles": ["README.md"] } }
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    },
+    "vscode": {
+      "settings": {
+        "python.terminal.activateEnvironment": false
+      }
+    }
+  }
 }

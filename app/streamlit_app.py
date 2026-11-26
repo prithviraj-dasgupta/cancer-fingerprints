@@ -21,8 +21,8 @@ CITATION = (
     "Signatures: COSMIC v3.4 SBS (GRCh38, exome-adjusted), Alexandrov et al. Nature 578:94-101 "
     "(2020); Sondka et al. Nucleic Acids Res 52:D1210 (2024). COSMIC data are used under the "
     "[COSMIC terms](https://www.cosmickb.org/terms/) for non-commercial research and are not "
-    "redistributed here, so this app runs locally only. Fitting is NNLS refitting against the "
-    "reference, not a trained ML model."
+    "redistributed or hosted here: the app runs only on your own machine or in your own "
+    "GitHub Codespace. Fitting is NNLS refitting against the reference, not a trained ML model."
 )
 
 
